@@ -1,2 +1,0 @@
-# linked-list-graph
-Implements a linked list to represent a graph data structure in [rust](https://doc.rust-lang.org/std/index.html) and presents on screen with js, wrapped by [tauri](https://v2.tauri.app/start/).
