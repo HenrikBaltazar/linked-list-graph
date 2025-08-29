@@ -23,7 +23,7 @@ public class Main {
         System.out.println(graph.toString());
 
         Interface ui = new Interface(graph);
-        ui.setVisible(true);
+        ui.setVisible(args.length == 0 || !args[0].equals("-h"));
 
     }
 }

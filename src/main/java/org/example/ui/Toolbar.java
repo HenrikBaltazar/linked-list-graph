@@ -71,7 +71,7 @@ public class Toolbar extends JToolBar {
    }
    
    public void removeButtonAction(Interface ui){
-        ui.getGraph().removeVertex(ui.getSelectedNode);
+       // ui.getGraph().removeVertex(ui.getSelectedNode);
    }
    
    public void connectButtonAction(Interface ui){
