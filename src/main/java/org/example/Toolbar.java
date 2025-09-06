@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 public class Toolbar extends JToolBar {
     private static final String resourcesPath = "src/main/resources/";
@@ -50,9 +51,9 @@ public class Toolbar extends JToolBar {
         removeButton.setToolTipText("Remover vértice (Modo Seleção)");
         connectButton.setToolTipText("Conectar vértices");
         disconnectButton.setToolTipText("Desconectar vértices");
-        orientationButton.setToolTipText("Mudar grafo orientado e não-orientado ");
-        adjMatrixButton.setToolTipText("Gerar Matriz de Adjacencia");
-        incMatrixButton.setToolTipText("Incluir Matriz de Incidencia");
+        orientationButton.setToolTipText("Mudar grafo orientado e não-orientado");
+        adjMatrixButton.setToolTipText("Gerar Matriz de Adjacência");
+        incMatrixButton.setToolTipText("Gerar Matriz de Incidência");
 
         configureToggleAppearance(addButton);
         configureToggleAppearance(removeButton);
@@ -68,44 +69,7 @@ public class Toolbar extends JToolBar {
         toolModeGroup.add(connectButton);
         toolModeGroup.add(disconnectButton);
 
-
-        addButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                addButtonAction();
-            }
-        });
-        removeButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                removeButtonAction();
-            }
-        });
-        connectButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                connectButtonAction();
-            }
-        });
-        disconnectButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                disconnectButtonAction();
-            }
-        });
-        orientationButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                orientationButtonAction();
-            }
-        });
-
-        adjMatrixButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                adjMatrixButtonAction();
-            }
-        });
-
-        incMatrixButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                incMatrixButtonAction();
-            }
-        });
+        setupActionListeners();
 
         MouseAdapter mouseListener = new MouseAdapter() {
             @Override
@@ -123,10 +87,53 @@ public class Toolbar extends JToolBar {
         add(adjMatrixButton);
         add(incMatrixButton);
 
-        orientationButton.setSelected(true);
-        orientationButtonAction();
+        addButton.setSelected(true);
+        addButtonAction();
     }
 
+    private void setupActionListeners() {
+        addButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                addButtonAction();
+            }
+        });
+
+        removeButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                removeButtonAction();
+            }
+        });
+
+        connectButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                connectButtonAction();
+            }
+        });
+
+        disconnectButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                disconnectButtonAction();
+            }
+        });
+
+        orientationButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                orientationButtonAction();
+            }
+        });
+
+        adjMatrixButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                adjMatrixButtonAction();
+            }
+        });
+
+        incMatrixButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                incMatrixButtonAction();
+            }
+        });
+    }
 
     private void configureButtonAppearance(JButton button) {
         button.setBackground(new Color(159, 197, 232));
@@ -139,7 +146,6 @@ public class Toolbar extends JToolBar {
         button.setBorderPainted(false);
         button.setFocusPainted(false);
     }
-
 
     public void addButtonAction() {
         ui.getGraphPanel().setToolMode(GraphPanel.ToolMode.ADD_NODE);
@@ -158,30 +164,143 @@ public class Toolbar extends JToolBar {
     }
 
     public void orientationButtonAction() {
-        ui.getGraphPanel().switchIsDirected();
+        GraphPanel graphPanel = ui.getGraphPanel();
+
+        // Alterna entre os tipos de grafo
+        if (graphPanel.getGraphType() == GraphType.DIRECTED) {
+            graphPanel.setGraphType(GraphType.UNDIRECTED);
+        } else {
+            graphPanel.setGraphType(GraphType.DIRECTED);
+        }
+
+        // Atualiza o estado visual do botão baseado no tipo atual
+        boolean isDirected = graphPanel.getGraphType() == GraphType.DIRECTED;
+        orientationButton.setSelected(isDirected);
+
+        // Atualiza tooltips baseado no tipo atual
+        updateTooltipsForGraphType();
+
+        System.out.println("Grafo alterado para: " + graphPanel.getGraphType().getDescription());
     }
 
     public void adjMatrixButtonAction() {
-        int[][] matriz = {
-                {1, 2, 3},
-                {4, 5, 6},
-                {7, 8, 9}
-        };
+        GraphPanel graphPanel = ui.getGraphPanel();
+        List<Vertex> vertices = graphPanel.getVertexList();
 
-        matrixFrame(matriz, "Matriz 3x3");
+        if (vertices.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Matriz de Adjacência",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        int[][] matrix = graphPanel.getAdjacencyMatrix();
+        String[] vertexLabels = vertices.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+
+        String title = "Matriz de Adjacência - " +
+                (graphPanel.getGraphType() == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido");
+
+        showMatrixFrame(matrix, vertexLabels, vertexLabels, title);
     }
 
     public void incMatrixButtonAction() {
-        int[][] matriz = {
-                {1, 2, 3},
-                {4, 5, 6},
-                {7, 8, 9}
-        };
+        GraphPanel graphPanel = ui.getGraphPanel();
+        List<Vertex> vertices = graphPanel.getVertexList();
+        List<Connection> connections = graphPanel.getConnectionList();
 
-        matrixFrame(matriz, "Matriz 3x3");
+        if (vertices.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Matriz de Incidência",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        if (connections.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui arestas/arcos!",
+                    "Matriz de Incidência",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        int[][] matrix = graphPanel.getIncidenceMatrix();
+        String[] vertexLabels = vertices.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+        String[] connectionLabels = connections.stream()
+                .map(Connection::getId)
+                .toArray(String[]::new);
+
+        String title = "Matriz de Incidência - " +
+                (graphPanel.getGraphType() == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido");
+
+        showMatrixFrame(matrix, vertexLabels, connectionLabels, title);
     }
 
-    public void matrixFrame(int[][] matrix, String title){
+    private void updateTooltipsForGraphType() {
+        GraphType currentType = ui.getGraphPanel().getGraphType();
+        String connectionType = currentType == GraphType.DIRECTED ? "arcos" : "arestas";
+
+        connectButton.setToolTipText("Conectar vértices (Criar " + connectionType + ")");
+        disconnectButton.setToolTipText("Desconectar vértices (Remover " + connectionType + ")");
+    }
+
+    private void showMatrixFrame(int[][] matrix, String[] rowLabels, String[] colLabels, String title) {
+        int n = matrix.length;
+        int m = matrix[0].length;
+
+        // Converte a matriz para Object[][] para a JTable
+        Object[][] data = new Object[n][m];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                data[i][j] = matrix[i][j];
+            }
+        }
+
+        // Cria a tabela com labels personalizados
+        JTable table = new JTable(data, colLabels) {
+            public String getRowName(int row) {
+                return rowLabels[row];
+            }
+        };
+
+        table.setEnabled(false);
+        table.setRowHeight(30);
+
+        // Adiciona os nomes das linhas
+        JTable rowTable = new JTable(n, 1) {
+            @Override
+            public Object getValueAt(int row, int column) {
+                return rowLabels[row];
+            }
+        };
+        rowTable.setEnabled(false);
+        rowTable.setPreferredScrollableViewportSize(new Dimension(50, 0));
+        rowTable.setRowHeight(30);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setRowHeaderView(rowTable);
+
+        JFrame frame = new JFrame(title);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.add(scrollPane);
+        frame.pack();
+        frame.setLocationRelativeTo(this);
+        frame.setVisible(true);
+    }
+
+    // Mantém compatibilidade com método original
+    public void matrixFrame(int[][] matrix, String title) {
         int n = matrix.length;
         int m = matrix[0].length;
 
@@ -208,5 +327,4 @@ public class Toolbar extends JToolBar {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
-
 }

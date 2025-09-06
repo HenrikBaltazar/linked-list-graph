@@ -10,16 +10,14 @@ import java.util.List;
 public class GraphPanel extends JPanel {
 
     private List<Vertex> vertexList = new ArrayList<>();
-    private List<Edge> edgeList = new ArrayList<>();
+    private List<Connection> connectionList = new ArrayList<>(); // Pode ser arestas ou arcos
 
     public enum ToolMode { ADD_NODE, REMOVE, CONNECT, DISCONNECT }
     private ToolMode currentMode = ToolMode.ADD_NODE;
     private Vertex selectedNode = null;
     private int nextVertexIdCounter = 1;
-    private int nextEdgeIdCounter = 1;
-
-    // Por enquanto assumir que o grafo é não-dirigido (Implementar depois)
-    private boolean isDirected = true;
+    private int nextConnectionIdCounter = 1;
+    private GraphType graphType = GraphType.UNDIRECTED;
 
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
@@ -40,49 +38,85 @@ public class GraphPanel extends JPanel {
         this.vertexList.add(newVertex);
     }
 
-    public Edge addEdge(String edgeId, Vertex source, Vertex target, double weight) {
+    public boolean removeVertex(Vertex vertex) {
+        if (vertex == null) return false;
+
+        // Remove todas as conexões (arestas/arcos) conectadas a este vértice
+        connectionList.removeIf(connection ->
+                connection.getSource().equals(vertex) || connection.getTarget().equals(vertex));
+
+        // Remove o vértice da lista de adjacência dos outros vértices
+        for (Vertex v : vertexList) {
+            v.getNeighbours().remove(vertex);
+        }
+
+        // Remove o vértice
+        boolean removed = vertexList.remove(vertex);
+
+        if (selectedNode == vertex) {
+            selectedNode = null;
+        }
+
+        return removed;
+    }
+
+    public Connection addConnection(String connectionId, Vertex source, Vertex target, double weight) {
         if (source == null || target == null) return null;
 
-        if (hasEdgeBetween(source, target)) {
+        // Para grafos não dirigidos, verifica se já existe uma aresta entre estes vértices
+        if (graphType == GraphType.UNDIRECTED && hasConnectionBetween(source, target)) {
             System.out.println("Já existe uma aresta entre " + source.getId() + " e " + target.getId());
             return null;
         }
 
-        if (edgeId == null || edgeId.isEmpty()) {
-            edgeId = "E" + nextEdgeIdCounter++;
+        // Para grafos dirigidos, verifica se já existe um arco com a mesma direção
+        if (graphType == GraphType.DIRECTED && hasDirectedConnectionBetween(source, target)) {
+            System.out.println("Já existe um arco de " + source.getId() + " para " + target.getId());
+            return null;
         }
 
-        Edge newEdge = new Edge(edgeId, source, target, weight);
-        edgeList.add(newEdge);
+        if (connectionId == null || connectionId.isEmpty()) {
+            String prefix = graphType == GraphType.DIRECTED ? "A" : "E"; // A para Arco, E para Edge
+            connectionId = prefix + nextConnectionIdCounter++;
+        }
+
+        Connection newConnection;
+        if (graphType == GraphType.DIRECTED) {
+            newConnection = new Arc(connectionId, source, target, weight);
+        } else {
+            newConnection = new Edge(connectionId, source, target, weight);
+        }
+
+        connectionList.add(newConnection);
 
         // Atualiza as listas de adjacência dos vértices
         source.addNeighbour(target);
-        if (!isDirected) {
+        if (graphType == GraphType.UNDIRECTED) {
             target.addNeighbour(source);
         }
 
-        return newEdge;
+        return newConnection;
     }
 
-    public boolean removeEdge(Edge edge) {
-        if (edge == null) return false;
+    public boolean removeConnection(Connection connection) {
+        if (connection == null) return false;
 
-        boolean removed = edgeList.remove(edge);
+        boolean removed = connectionList.remove(connection);
 
         if (removed) {
             // Remove da lista de adjacência
-            edge.getSource().getNeighbours().remove(edge.getTarget());
-            if (!isDirected) {
-                edge.getTarget().getNeighbours().remove(edge.getSource());
+            connection.getSource().getNeighbours().remove(connection.getTarget());
+            if (graphType == GraphType.UNDIRECTED) {
+                connection.getTarget().getNeighbours().remove(connection.getSource());
             }
         }
 
         return removed;
     }
 
-    public boolean removeEdgeBetween(Vertex v1, Vertex v2) {
-        Edge edge = findEdgeBetween(v1, v2);
-        return removeEdge(edge);
+    public boolean removeConnectionBetween(Vertex v1, Vertex v2) {
+        Connection connection = findConnectionBetween(v1, v2);
+        return removeConnection(connection);
     }
 
     public boolean areAdjacent(Vertex v1, Vertex v2) {
@@ -90,31 +124,59 @@ public class GraphPanel extends JPanel {
         return v1.getNeighbours().contains(v2);
     }
 
-    public boolean hasEdgeBetween(Vertex v1, Vertex v2) {
-        return findEdgeBetween(v1, v2) != null;
+    public boolean hasConnectionBetween(Vertex v1, Vertex v2) {
+        return findConnectionBetween(v1, v2) != null;
     }
 
-    public Edge findEdgeBetween(Vertex v1, Vertex v2) {
-        for (Edge edge : edgeList) {
-            if (edge.connects(v1, v2)) {
-                return edge;
+    public boolean hasDirectedConnectionBetween(Vertex source, Vertex target) {
+        for (Connection connection : connectionList) {
+            if (connection.getSource().equals(source) && connection.getTarget().equals(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Connection findConnectionBetween(Vertex v1, Vertex v2) {
+        for (Connection connection : connectionList) {
+            if (connection.connects(v1, v2)) {
+                return connection;
             }
         }
         return null;
     }
 
-    public double getEdgeWeight(Edge edge) {
-        return edge != null ? edge.getWeight() : 0;
+    public double getConnectionWeight(Connection connection) {
+        return connection != null ? connection.getWeight() : 0;
     }
 
-    public Vertex[] getEdgeEndpoints(Edge edge) {
-        return edge != null ? edge.getEndpoints() : null;
+    public Vertex[] getConnectionEndpoints(Connection connection) {
+        return connection != null ? connection.getEndpoints() : null;
+    }
+
+    public List<Edge> getEdges() {
+        List<Edge> edges = new ArrayList<>();
+        for (Connection connection : connectionList) {
+            if (connection instanceof Edge) {
+                edges.add((Edge) connection);
+            }
+        }
+        return edges;
+    }
+
+    public List<Arc> getArcs() {
+        List<Arc> arcs = new ArrayList<>();
+        for (Connection connection : connectionList) {
+            if (connection instanceof Arc) {
+                arcs.add((Arc) connection);
+            }
+        }
+        return arcs;
     }
 
     public void removeSelectedNode() {
         if (selectedNode != null) {
-            this.vertexList.remove(selectedNode);
-            selectedNode.setSelected(false); // Garante que a seleção seja limpa visualmente
+            removeVertex(selectedNode);
             selectedNode = null;
         }
     }
@@ -149,13 +211,17 @@ public class GraphPanel extends JPanel {
                     } else {
                         // Conecta o primeiro nó (selectedNode) ao segundo (clickedNode)
                         if (clickedNode != selectedNode) {
-                            System.out.println("Conectando " + selectedNode.getId() + " -> " + clickedNode.getId());
+                            String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
+                            String direction = graphType == GraphType.DIRECTED ?
+                                    selectedNode.getId() + " → " + clickedNode.getId() :
+                                    selectedNode.getId() + " ↔ " + clickedNode.getId();
 
-                            // Solicita o peso da aresta ao usuário
+                            System.out.println("Criando " + connectionType + ": " + direction);
+
                             String weightStr = JOptionPane.showInputDialog(
                                     this,
-                                    "Digite o peso da aresta:",
-                                    "Peso da Aresta",
+                                    "Digite o peso da " + connectionType + ":",
+                                    "Peso da " + (graphType == GraphType.DIRECTED ? "Arco" : "Aresta"),
                                     JOptionPane.QUESTION_MESSAGE
                             );
 
@@ -173,7 +239,7 @@ public class GraphPanel extends JPanel {
                                 }
                             }
 
-                            addEdge(null, selectedNode, clickedNode, weight);
+                            addConnection(null, selectedNode, clickedNode, weight);
                             selectNode(null); // Limpa seleção após conectar
                         }
                     }
@@ -181,7 +247,24 @@ public class GraphPanel extends JPanel {
                 break;
 
             case DISCONNECT:
-                // TODO: Implementar lógica de desconexão (selecionar aresta ou dois nós)
+                if (clickedNode != null) {
+                    if (selectedNode == null) {
+                        selectNode(clickedNode);
+                    } else {
+                        // Remove conexão entre selectedNode e clickedNode
+                        if (clickedNode != selectedNode) {
+                            boolean removed = removeConnectionBetween(selectedNode, clickedNode);
+                            String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
+
+                            if (removed) {
+                                System.out.println(connectionType + " removido entre " + selectedNode.getId() + " e " + clickedNode.getId());
+                            } else {
+                                System.out.println("Nenhum " + connectionType + " encontrado entre " + selectedNode.getId() + " e " + clickedNode.getId());
+                            }
+                            selectNode(null);
+                        }
+                    }
+                }
                 break;
         }
         repaint();
@@ -219,27 +302,114 @@ public class GraphPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Desenha as arestas primeiro (para ficarem atrás dos vértices)
-        for (Edge edge : edgeList) {
-            edge.draw(g, isDirected);
+        // Desenha as conexões primeiro (para ficarem atrás dos vértices)
+        for (Connection connection : connectionList) {
+            connection.draw(g);
         }
 
         for (Vertex vertex : vertexList) {
             vertex.draw(g);
         }
+
+        drawGraphTypeInfo(g2d);
     }
 
-    // Getters para acesso às listas
+    private void drawGraphTypeInfo(Graphics2D g2d) {
+        g2d.setColor(Color.GRAY);
+        g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+        String typeText = graphType == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido";
+        g2d.drawString("Tipo: " + typeText, 10, 20);
+    }
+
+    // ------------------------------- Matrizes
+    public int[][] getAdjacencyMatrix() {
+        int n = vertexList.size();
+        int[][] matrix = new int[n][n];
+
+        // Cria um mapa de vértice para índice
+        java.util.Map<Vertex, Integer> vertexIndex = new java.util.HashMap<>();
+        for (int i = 0; i < n; i++) {
+            vertexIndex.put(vertexList.get(i), i);
+        }
+
+        // Preenche a matriz
+        for (Connection connection : connectionList) {
+            int sourceIndex = vertexIndex.get(connection.getSource());
+            int targetIndex = vertexIndex.get(connection.getTarget());
+
+            matrix[sourceIndex][targetIndex] = 1;
+
+            // Se for não dirigido, marca também a posição simétrica
+            if (graphType == GraphType.UNDIRECTED) {
+                matrix[targetIndex][sourceIndex] = 1;
+            }
+        }
+
+        return matrix;
+    }
+
+    public int[][] getIncidenceMatrix() {
+        int n = vertexList.size();
+        int m = connectionList.size();
+        int[][] matrix = new int[n][m];
+
+        // Cria um mapa de vértice para índice
+        java.util.Map<Vertex, Integer> vertexIndex = new java.util.HashMap<>();
+        for (int i = 0; i < n; i++) {
+            vertexIndex.put(vertexList.get(i), i);
+        }
+
+        // Preenche a matriz
+        for (int j = 0; j < m; j++) {
+            Connection connection = connectionList.get(j);
+            int sourceIndex = vertexIndex.get(connection.getSource());
+            int targetIndex = vertexIndex.get(connection.getTarget());
+
+            if (graphType == GraphType.DIRECTED) {
+                // Para grafos dirigidos: +1 para saída, -1 para entrada
+                matrix[sourceIndex][j] = 1;
+                matrix[targetIndex][j] = -1;
+            } else {
+                // Para grafos não dirigidos: 1 para ambas as extremidades
+                matrix[sourceIndex][j] = 1;
+                matrix[targetIndex][j] = 1;
+            }
+        }
+
+        return matrix;
+    }
+
+    // ------------------------------- Getters para acesso às listas
     public List<Vertex> getVertexList() { return new ArrayList<>(vertexList); }
-    public List<Edge> getEdgeList() { return new ArrayList<>(edgeList); }
+    public List<Connection> getConnectionList() { return new ArrayList<>(connectionList); }
+    public GraphType getGraphType() { return graphType; }
 
-    // Getter e setter para tipo do grafo (será usado depois)
-    public boolean isDirected() { return isDirected; }
-    public void setDirected(boolean directed) { this.isDirected = directed; }
-
-    public void switchIsDirected() {
-        System.out.println("directed: " + isDirected);
-        isDirected = !isDirected;
+    public void setGraphType(GraphType graphType) {
+        this.graphType = graphType;
+        // Converte conexões existentes se necessário
+        convertExistingConnections();
+        repaint();
     }
-    
+
+    private void convertExistingConnections() {
+        List<Connection> oldConnections = new ArrayList<>(connectionList);
+        connectionList.clear();
+
+        // Limpa listas de adjacência
+        for (Vertex vertex : vertexList) {
+            vertex.getNeighbours().clear();
+        }
+
+        // Recria as conexões com o novo tipo
+        for (Connection oldConnection : oldConnections) {
+            addConnection(
+                    oldConnection.getId(),
+                    oldConnection.getSource(),
+                    oldConnection.getTarget(),
+                    oldConnection.getWeight()
+            );
+        }
+    }
+
+
 }

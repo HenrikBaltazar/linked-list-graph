@@ -2,11 +2,11 @@
 
 ## TODO
 - [x] Botão de grafo orientado/nao-orientado
-- [ ] Arestas
-- [ ] Arcos
-- [ ] Selecionar e remover a aresta/arco
+- [x] Arestas
+- [x] Arcos
+- [x] Selecionar e remover a aresta/arco
 - [ ] Verificar se vertices sao adjacentes
-- [ ] Retornar dados de aresta
-- [ ] Matriz de adjacencia
-- [ ] Matriz de incidencia
+- [x] Retornar dados de aresta
+- [x] Matriz de adjacencia
+- [x] Matriz de incidencia
 - [ ] Arvore geradora
