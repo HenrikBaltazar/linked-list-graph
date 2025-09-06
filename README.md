@@ -1,7 +1,7 @@
 # Grafo de lista encadeada
 
 ## TODO
-- [ ] Botão de grafo orientado/nao-orientado
+- [x] Botão de grafo orientado/nao-orientado
 - [ ] Arestas
 - [ ] Arcos
 - [ ] Selecionar e remover a aresta/arco

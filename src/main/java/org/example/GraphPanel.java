@@ -10,11 +10,16 @@ import java.util.List;
 public class GraphPanel extends JPanel {
 
     private List<Vertex> vertexList = new ArrayList<>();
+    private List<Edge> edgeList = new ArrayList<>();
 
     public enum ToolMode { ADD_NODE, REMOVE, CONNECT, DISCONNECT }
     private ToolMode currentMode = ToolMode.ADD_NODE;
     private Vertex selectedNode = null;
     private int nextVertexIdCounter = 1;
+    private int nextEdgeIdCounter = 1;
+
+    // Por enquanto assumir que o grafo é não-dirigido (Implementar depois)
+    private boolean isDirected = true;
 
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
@@ -35,6 +40,76 @@ public class GraphPanel extends JPanel {
         this.vertexList.add(newVertex);
     }
 
+    public Edge addEdge(String edgeId, Vertex source, Vertex target, double weight) {
+        if (source == null || target == null) return null;
+
+        if (hasEdgeBetween(source, target)) {
+            System.out.println("Já existe uma aresta entre " + source.getId() + " e " + target.getId());
+            return null;
+        }
+
+        if (edgeId == null || edgeId.isEmpty()) {
+            edgeId = "E" + nextEdgeIdCounter++;
+        }
+
+        Edge newEdge = new Edge(edgeId, source, target, weight);
+        edgeList.add(newEdge);
+
+        // Atualiza as listas de adjacência dos vértices
+        source.addNeighbour(target);
+        if (!isDirected) {
+            target.addNeighbour(source);
+        }
+
+        return newEdge;
+    }
+
+    public boolean removeEdge(Edge edge) {
+        if (edge == null) return false;
+
+        boolean removed = edgeList.remove(edge);
+
+        if (removed) {
+            // Remove da lista de adjacência
+            edge.getSource().getNeighbours().remove(edge.getTarget());
+            if (!isDirected) {
+                edge.getTarget().getNeighbours().remove(edge.getSource());
+            }
+        }
+
+        return removed;
+    }
+
+    public boolean removeEdgeBetween(Vertex v1, Vertex v2) {
+        Edge edge = findEdgeBetween(v1, v2);
+        return removeEdge(edge);
+    }
+
+    public boolean areAdjacent(Vertex v1, Vertex v2) {
+        if (v1 == null || v2 == null) return false;
+        return v1.getNeighbours().contains(v2);
+    }
+
+    public boolean hasEdgeBetween(Vertex v1, Vertex v2) {
+        return findEdgeBetween(v1, v2) != null;
+    }
+
+    public Edge findEdgeBetween(Vertex v1, Vertex v2) {
+        for (Edge edge : edgeList) {
+            if (edge.connects(v1, v2)) {
+                return edge;
+            }
+        }
+        return null;
+    }
+
+    public double getEdgeWeight(Edge edge) {
+        return edge != null ? edge.getWeight() : 0;
+    }
+
+    public Vertex[] getEdgeEndpoints(Edge edge) {
+        return edge != null ? edge.getEndpoints() : null;
+    }
 
     public void removeSelectedNode() {
         if (selectedNode != null) {
@@ -75,13 +150,36 @@ public class GraphPanel extends JPanel {
                         // Conecta o primeiro nó (selectedNode) ao segundo (clickedNode)
                         if (clickedNode != selectedNode) {
                             System.out.println("Conectando " + selectedNode.getId() + " -> " + clickedNode.getId());
-                            // TODO: Chamar selectedNode.addNeighbour(clickedNode);
-                            // TODO: Adicionar a aresta na lista de arestas para desenhar a linha
+
+                            // Solicita o peso da aresta ao usuário
+                            String weightStr = JOptionPane.showInputDialog(
+                                    this,
+                                    "Digite o peso da aresta:",
+                                    "Peso da Aresta",
+                                    JOptionPane.QUESTION_MESSAGE
+                            );
+
+                            double weight = 1.0; // peso padrão
+                            if (weightStr != null && !weightStr.trim().isEmpty()) {
+                                try {
+                                    weight = Double.parseDouble(weightStr.trim());
+                                } catch (NumberFormatException e) {
+                                    JOptionPane.showMessageDialog(
+                                            this,
+                                            "Peso inválido. Usando peso padrão 1.0",
+                                            "Aviso",
+                                            JOptionPane.WARNING_MESSAGE
+                                    );
+                                }
+                            }
+
+                            addEdge(null, selectedNode, clickedNode, weight);
                             selectNode(null); // Limpa seleção após conectar
                         }
                     }
                 }
                 break;
+
             case DISCONNECT:
                 // TODO: Implementar lógica de desconexão (selecionar aresta ou dois nós)
                 break;
@@ -120,8 +218,28 @@ public class GraphPanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Desenha as arestas primeiro (para ficarem atrás dos vértices)
+        for (Edge edge : edgeList) {
+            edge.draw(g, isDirected);
+        }
+
         for (Vertex vertex : vertexList) {
             vertex.draw(g);
         }
     }
+
+    // Getters para acesso às listas
+    public List<Vertex> getVertexList() { return new ArrayList<>(vertexList); }
+    public List<Edge> getEdgeList() { return new ArrayList<>(edgeList); }
+
+    // Getter e setter para tipo do grafo (será usado depois)
+    public boolean isDirected() { return isDirected; }
+    public void setDirected(boolean directed) { this.isDirected = directed; }
+
+    public void switchIsDirected() {
+        System.out.println("directed: " + isDirected);
+        isDirected = !isDirected;
+    }
+    
 }
