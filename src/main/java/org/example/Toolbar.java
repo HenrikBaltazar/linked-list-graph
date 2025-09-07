@@ -23,10 +23,11 @@ public class Toolbar extends JToolBar {
     private static final ImageIcon ICON_CHECK_ADJACENCY = new ImageIcon(resourcesPath + "adjacent.png");
     private static final ImageIcon ICON_PRIM = new ImageIcon(resourcesPath + "prim.png");
     private static final ImageIcon ICON_BFS = new ImageIcon(resourcesPath + "prim.png");
+    private static final ImageIcon ICON_DFS = new ImageIcon(resourcesPath + "prim.png");
 
 
     private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
-    private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton, bfsButton;
+    private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton, bfsButton, dfsButton;
     private final Interface ui;
 
     public Toolbar(Interface ui) {
@@ -45,6 +46,7 @@ public class Toolbar extends JToolBar {
         checkAdjacencyButton = new JButton(ICON_CHECK_ADJACENCY);
         primButton = new JButton(ICON_PRIM);
         bfsButton = new JButton(ICON_BFS);
+        dfsButton = new JButton(ICON_DFS);
 
         addButton.setSelectedIcon(ICON_ADD_SELECTED);
         removeButton.setSelectedIcon(ICON_REMOVE_SELECTED);
@@ -62,6 +64,7 @@ public class Toolbar extends JToolBar {
         checkAdjacencyButton.setToolTipText("Verificar se vértices são adjacentes");
         primButton.setToolTipText("Aplicar algoritmo de Prim (AGM)");
         bfsButton.setToolTipText("Aplicar Busca em Largura (BFS)");
+        dfsButton.setToolTipText("Aplicar Busca em Profundidade (DFS)");
 
         configureToggleAppearance(addButton);
         configureToggleAppearance(removeButton);
@@ -73,6 +76,7 @@ public class Toolbar extends JToolBar {
         configureButtonAppearance(checkAdjacencyButton);
         configureButtonAppearance(primButton);
         configureButtonAppearance(bfsButton);
+        configureButtonAppearance(dfsButton);
 
         ButtonGroup toolModeGroup = new ButtonGroup();
         toolModeGroup.add(addButton);
@@ -100,6 +104,7 @@ public class Toolbar extends JToolBar {
         add(checkAdjacencyButton);
         add(primButton);
         add(bfsButton);
+        add(dfsButton);
 
         addButton.setSelected(true);
         addButtonAction();
@@ -127,6 +132,8 @@ public class Toolbar extends JToolBar {
         primButton.addActionListener(_ -> primButtonAction());
 
         bfsButton.addActionListener(_ -> bfsButtonAction());
+
+        dfsButton.addActionListener(_ -> dfsButtonAction());
 
     }
 
@@ -311,6 +318,44 @@ public class Toolbar extends JToolBar {
 
         if (bfsTree != null) {
             System.out.println("Busca em Largura executada com sucesso!");
+        }
+    }
+
+    public void dfsButtonAction() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+
+        // Se já está mostrando uma DFS, pergunta se quer limpar ou calcular nova
+        if (graphPanel.isDFSVisible()) {
+            int option = JOptionPane.showConfirmDialog(
+                    this,
+                    "Uma árvore DFS já está sendo exibida. Deseja executar uma nova DFS?\n" +
+                            "(Isso irá substituir a árvore DFS atual)",
+                    "DFS já exibida",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
+                return;
+            } else if (option == JOptionPane.NO_OPTION) {
+                graphPanel.clearDFS();
+                return;
+            }
+            // Se YES, continua para calcular nova DFS
+        }
+
+        // Limpa AGM e BFS se estiverem visíveis para evitar confusão visual
+        if (graphPanel.isMSTVisible()) {
+            graphPanel.clearMST();
+        }
+        if (graphPanel.isBFSVisible()) {
+            graphPanel.clearBFS();
+        }
+
+        List<Connection> dfsTree = graphPanel.applyDepthFirstSearch();
+
+        if (dfsTree != null) {
+            System.out.println("Busca em Profundidade executada com sucesso!");
         }
     }
 

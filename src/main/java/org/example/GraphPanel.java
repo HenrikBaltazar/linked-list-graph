@@ -35,6 +35,15 @@ public class GraphPanel extends JPanel {
     private Vertex bfsStartVertex = null;
     private Map<Vertex, Integer> bfsDistances = new HashMap<>();
 
+    // Variáveis para visualização da DFS
+    private List<Connection> dfsTreeEdges = new ArrayList<>();
+    private List<Vertex> dfsVisitOrder = new ArrayList<>();
+    private boolean showDFS = false;
+    private Vertex dfsStartVertex = null;
+    private Map<Vertex, Integer> dfsDiscoveryTimes = new HashMap<>();
+    private Map<Vertex, Integer> dfsFinishTimes = new HashMap<>();
+
+
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
             @Override
@@ -710,6 +719,129 @@ public class GraphPanel extends JPanel {
 
     // FIM BFS ----------------------------------------------------------------------------
 
+    // DFS--------------------------------------------------------------------------------
+    public List<Connection> applyDepthFirstSearch() {
+        if (vertexList.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Erro - Busca em Profundidade",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        // Solicita ao usuário o vértice inicial
+        String[] vertexIds = vertexList.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+
+        String startVertexId = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecione o vértice inicial para a Busca em Profundidade:",
+                "Busca em Profundidade (DFS) - Vértice Inicial",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                vertexIds,
+                vertexIds[0]
+        );
+
+        if (startVertexId == null) {
+            return null; // Usuário cancelou
+        }
+
+        Vertex startVertex = vertexList.stream()
+                .filter(v -> v.getId().equals(startVertexId))
+                .findFirst()
+                .orElse(null);
+
+        if (startVertex == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Vértice inicial não encontrado!",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return null;
+        }
+
+        // Executa a busca em profundidade
+        DepthFirstSearch.DFSResult result = DepthFirstSearch.performDFS(vertexList, connectionList, startVertex);
+
+        if (result != null) {
+            // Armazena os resultados para visualização
+            dfsTreeEdges = result.getTreeEdges();
+            dfsVisitOrder = result.getVisitOrder();
+            dfsStartVertex = result.getStartVertex();
+            dfsDiscoveryTimes = result.getDiscoveryTimes();
+            dfsFinishTimes = result.getFinishTimes();
+            showDFS = true;
+
+            // Mostra resultado detalhado
+            String visitOrderText = dfsVisitOrder.stream()
+                    .map(v -> v.getId() + "(d:" + dfsDiscoveryTimes.get(v) + ",f:" + dfsFinishTimes.get(v) + ")")
+                    .reduce((a, b) -> a + " → " + b)
+                    .orElse("");
+
+            String treeEdgesText = dfsTreeEdges.stream()
+                    .map(Connection::getId)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("Nenhuma");
+
+            String message = String.format(
+                    "✓ Busca em Profundidade (DFS) executada!\n\n" +
+                            "Vértice inicial: %s\n" +
+                            "Vértices visitados: %d de %d\n" +
+                            "Arestas na árvore DFS: %d\n\n" +
+                            "Ordem de visita:\n%s\n\n" +
+                            "Arestas da árvore DFS:\n%s\n\n" +
+                            "A árvore DFS será destacada em roxo no grafo.\n" +
+                            "Os números nos vértices mostram tempos de descoberta e finalização.",
+                    startVertexId,
+                    result.getVisitedVertexCount(),
+                    vertexList.size(),
+                    result.getTreeEdgeCount(),
+                    visitOrderText,
+                    treeEdgesText
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    message,
+                    "Busca em Profundidade - Resultado",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            repaint();
+
+            System.out.printf("DFS executada com sucesso. %d vértices visitados, %d arestas na árvore%n",
+                    result.getVisitedVertexCount(), result.getTreeEdgeCount());
+
+            return result.getTreeEdges();
+        }
+
+        return null;
+    }
+
+    public void clearDFS() {
+        dfsTreeEdges.clear();
+        dfsVisitOrder.clear();
+        dfsDiscoveryTimes.clear();
+        dfsFinishTimes.clear();
+        showDFS = false;
+        dfsStartVertex = null;
+        repaint();
+    }
+
+    public boolean isDFSVisible() {
+        return showDFS;
+    }
+
+    public List<Connection> getDFSTreeEdges() {
+        return new ArrayList<>(dfsTreeEdges);
+    }
+
+    // FIM DFS ---------------------------------------------------------------------------
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -720,11 +852,14 @@ public class GraphPanel extends JPanel {
         for (Connection connection : connectionList) {
             boolean isMSTEdge = showMST && mstEdges.contains(connection);
             boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
+            boolean isDFSEdge = showDFS && dfsTreeEdges.contains(connection);
 
             if (isMSTEdge) {
                 drawMSTConnection(g2d, connection);
             } else if (isBFSEdge) {
                 drawBFSConnection(g2d, connection);
+            } else if (isDFSEdge) {
+                drawDFSConnection(g2d, connection);
             } else {
                 connection.draw(g);
             }
@@ -734,6 +869,8 @@ public class GraphPanel extends JPanel {
         for (Vertex vertex : vertexList) {
             if (showBFS && bfsVisitOrder.contains(vertex)) {
                 drawBFSVertex(g2d, vertex);
+            } else if (showDFS && dfsVisitOrder.contains(vertex)) {
+                drawDFSVertex(g2d, vertex);
             } else {
                 vertex.draw(g);
             }
@@ -750,7 +887,13 @@ public class GraphPanel extends JPanel {
         if (showBFS && !bfsTreeEdges.isEmpty()) {
             drawBFSInfo(g2d);
         }
+
+        // Desenha informações da DFS se estiver visível
+        if (showDFS && !dfsTreeEdges.isEmpty()) {
+            drawDFSInfo(g2d);
+        }
     }
+
 
 
     // Funções de draw ------------------------------------------------------------------------
@@ -924,6 +1067,108 @@ public class GraphPanel extends JPanel {
         String bfsInfo = String.format("BFS: %d vértices visitados, %d arestas na árvore",
                 bfsVisitOrder.size(), bfsTreeEdges.size());
         g2d.drawString(bfsInfo, 10, getHeight() - 30);
+    }
+
+    private void drawDFSConnection(Graphics2D g2d, Connection connection) {
+        // Salva o estado original
+        Color originalColor = g2d.getColor();
+        Stroke originalStroke = g2d.getStroke();
+
+        // Define estilo para arestas da árvore DFS
+        g2d.setColor(new Color(128, 0, 128)); // Roxo
+        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+
+        // Desenha a linha da conexão
+        g2d.drawLine(
+                connection.getSource().getX(),
+                connection.getSource().getY(),
+                connection.getTarget().getX(),
+                connection.getTarget().getY()
+        );
+
+        // Desenha o peso e ID com destaque roxo
+        drawDFSWeightAndId(g2d, connection);
+
+        // Restaura o estado original
+        g2d.setColor(originalColor);
+        g2d.setStroke(originalStroke);
+    }
+
+    private void drawDFSWeightAndId(Graphics2D g2d, Connection connection) {
+        int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
+        int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
+
+        g2d.setFont(new Font("Arial", Font.BOLD, 15));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        String combinedText = connection.getId() + "(" + connection.getWeight() + ")";
+        int textWidth = fm.stringWidth(combinedText);
+        int textHeight = fm.getHeight();
+
+        int paddingX = 6;
+        int paddingY = 4;
+
+        // Fundo roxo claro para destacar
+        g2d.setColor(new Color(230, 200, 255));
+        g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Borda roxa escura
+        g2d.setColor(new Color(128, 0, 128));
+        g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Texto em roxo escuro
+        g2d.setColor(new Color(100, 0, 100));
+        g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
+    }
+
+    private void drawDFSVertex(Graphics2D g2d, Vertex vertex) {
+        // Desenha o vértice normal primeiro
+        vertex.draw(g2d);
+
+        // Adiciona informações da DFS
+        if (dfsDiscoveryTimes.containsKey(vertex)) {
+            int discoveryTime = dfsDiscoveryTimes.get(vertex);
+            int finishTime = dfsFinishTimes.getOrDefault(vertex, -1);
+
+            // Posição para o texto dos tempos
+            int x = vertex.getX();
+            int y = vertex.getY() - 35; // Acima do vértice
+
+            g2d.setFont(new Font("Arial", Font.BOLD, 11));
+            FontMetrics fm = g2d.getFontMetrics();
+            String timeText = "d:" + discoveryTime + "/f:" + finishTime;
+            int textWidth = fm.stringWidth(timeText);
+
+            // Fundo para melhor legibilidade
+            g2d.setColor(new Color(230, 200, 255, 200));
+            g2d.fillOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
+
+            // Borda
+            g2d.setColor(new Color(128, 0, 128));
+            g2d.drawOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
+
+            // Texto dos tempos
+            g2d.setColor(new Color(100, 0, 100));
+            g2d.drawString(timeText, x - textWidth/2, y + 4);
+
+            // Destaque especial para o vértice inicial
+            if (vertex.equals(dfsStartVertex)) {
+                g2d.setStroke(new BasicStroke(3));
+                g2d.setColor(new Color(180, 100, 200));
+                g2d.drawOval(vertex.getX() - 27, vertex.getY() - 27, 54, 54);
+            }
+        }
+    }
+
+    private void drawDFSInfo(Graphics2D g2d) {
+        g2d.setColor(new Color(100, 0, 100));
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+
+        String dfsInfo = String.format("DFS: %d vértices visitados, %d arestas na árvore",
+                dfsVisitOrder.size(), dfsTreeEdges.size());
+        g2d.drawString(dfsInfo, 10, getHeight() - 50);
     }
 
     // Matrizes -------------------------------------------------------------------------------

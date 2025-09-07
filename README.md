@@ -9,7 +9,9 @@
 - [x] Retornar dados de aresta
 - [x] Matriz de adjacencia
 - [x] Matriz de incidencia
- 
+- [ ] Confirmar que todos os resultados estão corretos.
+- [ ] Utilizar ícones diferentes para os algoritmos
+- 
 ---
 
 - [x] inserir no grafo um novo vértice isolado v; (**0,5**)
@@ -25,7 +27,7 @@ identificador e seu valor; (**0,5**)
 (AGM) produzida; (**1,5**)
 - [x] aplicar a Busca em Largura (BFS) no grafo, definindo o vértice de saída, e apresentar graficamente
 árvore gerada; (**1,5**)
-- [ ] aplicar a Busca em Profundidade (DFS) no grafo, definindo o vértice de saída, e apresentar
+- [x] aplicar a Busca em Profundidade (DFS) no grafo, definindo o vértice de saída, e apresentar
 graficamente árvore gerada; (**1,5**)
 - [ ] determinar as componentes conexas/fortemente conexas do grafo e apresentar na tela os
 conjuntos. (**1,5**)
