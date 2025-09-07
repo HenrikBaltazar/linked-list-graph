@@ -124,6 +124,144 @@ public class GraphPanel extends JPanel {
         return v1.getNeighbours().contains(v2);
     }
 
+    public void checkVertexAdjacency() {
+        if (vertexList.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Verificar Adjacência",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        if (vertexList.size() < 2) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo precisa ter pelo menos 2 vértices para verificar adjacência!",
+                    "Verificar Adjacência",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        // Cria array com os IDs dos vértices para seleção
+        String[] vertexIds = vertexList.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+
+        // Solicita o primeiro vértice
+        String vertex1Id = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecione o primeiro vértice:",
+                "Verificar Adjacência - Vértice 1",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                vertexIds,
+                vertexIds[0]
+        );
+
+        if (vertex1Id == null) {
+            return; // Usuário cancelou
+        }
+
+        // Solicita o segundo vértice
+        String vertex2Id = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecione o segundo vértice:",
+                "Verificar Adjacência - Vértice 2",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                vertexIds,
+                vertexIds.length > 1 ? vertexIds[1] : vertexIds[0]
+        );
+
+        if (vertex2Id == null) {
+            return; // Usuário cancelou
+        }
+
+        // Busca os vértices pelos IDs
+        Vertex vertex1 = vertexList.stream()
+                .filter(v -> v.getId().equals(vertex1Id))
+                .findFirst()
+                .orElse(null);
+
+        Vertex vertex2 = vertexList.stream()
+                .filter(v -> v.getId().equals(vertex2Id))
+                .findFirst()
+                .orElse(null);
+
+        if (vertex1 == null || vertex2 == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Erro ao encontrar os vértices selecionados!",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        // Verifica adjacência
+        boolean adjacent = areAdjacent(vertex1, vertex2);
+
+        String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
+        String message;
+
+        if (adjacent) {
+            // Busca informações sobre a conexão
+            Connection connection = findConnectionBetween(vertex1, vertex2);
+            if (connection != null) {
+                String direction;
+                if (graphType == GraphType.DIRECTED) {
+                    // Para grafos dirigidos, verifica a direção
+                    if (connection.getSource().equals(vertex1)) {
+                        direction = vertex1Id + " → " + vertex2Id;
+                    } else {
+                        direction = vertex2Id + " → " + vertex1Id;
+                    }
+                } else {
+                    direction = vertex1Id + " ↔ " + vertex2Id;
+                }
+
+                message = String.format(
+                        "✓ Os vértices %s e %s SÃO ADJACENTES!\n\n" +
+                                "Detalhes da conexão:\n" +
+                                "• Tipo: %s\n" +
+                                "• ID: %s\n" +
+                                "• Direção: %s\n" +
+                                "• Peso: %.2f",
+                        vertex1Id, vertex2Id,
+                        connectionType,
+                        connection.getId(),
+                        direction,
+                        connection.getWeight()
+                );
+            } else {
+                message = String.format(
+                        "✓ Os vértices %s e %s SÃO ADJACENTES!",
+                        vertex1Id, vertex2Id
+                );
+            }
+        } else {
+            message = String.format(
+                    "✗ Os vértices %s e %s NÃO SÃO ADJACENTES.\n\n" +
+                            "Não há %s conectando estes vértices.",
+                    vertex1Id, vertex2Id, connectionType
+            );
+        }
+
+        JOptionPane.showMessageDialog(
+                this,
+                message,
+                "Resultado da Verificação de Adjacência",
+                adjacent ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE
+        );
+
+        System.out.println("Verificação de adjacência: " + vertex1Id + " e " + vertex2Id + " -> " +
+                (adjacent ? "ADJACENTES" : "NÃO ADJACENTES"));
+    }
+
+
     public boolean hasConnectionBetween(Vertex v1, Vertex v2) {
         return findConnectionBetween(v1, v2) != null;
     }

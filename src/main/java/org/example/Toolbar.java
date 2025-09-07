@@ -22,9 +22,11 @@ public class Toolbar extends JToolBar {
     private static final ImageIcon ICON_ORIENTATION_SELECTED = new ImageIcon(resourcesPath + "selected_orientation.png");
     private static final ImageIcon ICON_ADJMATRIX = new ImageIcon(resourcesPath + "a.png");
     private static final ImageIcon ICON_INCMATRIX = new ImageIcon(resourcesPath + "i.png");
+    private static final ImageIcon ICON_CHECK_ADJACENCY = new ImageIcon(resourcesPath + "adjacent.png");
+
 
     private JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
-    private JButton adjMatrixButton, incMatrixButton;
+    private JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton;
     private Interface ui;
 
     public Toolbar(Interface ui) {
@@ -40,6 +42,7 @@ public class Toolbar extends JToolBar {
         orientationButton = new JToggleButton(ICON_ORIENTATION);
         adjMatrixButton = new JButton(ICON_ADJMATRIX);
         incMatrixButton = new JButton(ICON_INCMATRIX);
+        checkAdjacencyButton = new JButton(ICON_CHECK_ADJACENCY);
 
         addButton.setSelectedIcon(ICON_ADD_SELECTED);
         removeButton.setSelectedIcon(ICON_REMOVE_SELECTED);
@@ -54,6 +57,7 @@ public class Toolbar extends JToolBar {
         orientationButton.setToolTipText("Mudar grafo orientado e não-orientado");
         adjMatrixButton.setToolTipText("Gerar Matriz de Adjacência");
         incMatrixButton.setToolTipText("Gerar Matriz de Incidência");
+        checkAdjacencyButton.setToolTipText("Verificar se vértices são adjacentes");
 
         configureToggleAppearance(addButton);
         configureToggleAppearance(removeButton);
@@ -62,6 +66,7 @@ public class Toolbar extends JToolBar {
         configureToggleAppearance(orientationButton);
         configureButtonAppearance(adjMatrixButton);
         configureButtonAppearance(incMatrixButton);
+        configureButtonAppearance(checkAdjacencyButton);
 
         ButtonGroup toolModeGroup = new ButtonGroup();
         toolModeGroup.add(addButton);
@@ -86,6 +91,7 @@ public class Toolbar extends JToolBar {
         add(orientationButton);
         add(adjMatrixButton);
         add(incMatrixButton);
+        add(checkAdjacencyButton);
 
         addButton.setSelected(true);
         addButtonAction();
@@ -133,6 +139,13 @@ public class Toolbar extends JToolBar {
                 incMatrixButtonAction();
             }
         });
+
+        checkAdjacencyButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                checkAdjacencyButtonAction();
+            }
+        });
+
     }
 
     private void configureButtonAppearance(JButton button) {
@@ -245,6 +258,10 @@ public class Toolbar extends JToolBar {
                 (graphPanel.getGraphType() == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido");
 
         showMatrixFrame(matrix, vertexLabels, connectionLabels, title);
+    }
+
+    public void checkAdjacencyButtonAction() {
+        ui.getGraphPanel().checkVertexAdjacency();
     }
 
     private void updateTooltipsForGraphType() {

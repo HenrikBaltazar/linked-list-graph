@@ -5,7 +5,7 @@
 - [x] Arestas
 - [x] Arcos
 - [x] Selecionar e remover a aresta/arco
-- [ ] Verificar se vertices são adjacentes
+- [x] Verificar se vertices são adjacentes
 - [x] Retornar dados de aresta
 - [x] Matriz de adjacencia
 - [x] Matriz de incidencia
