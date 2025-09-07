@@ -6,6 +6,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import org.example.algorithms.Prim;
 
 public class GraphPanel extends JPanel {
 
@@ -18,6 +19,12 @@ public class GraphPanel extends JPanel {
     private int nextVertexIdCounter = 1;
     private int nextConnectionIdCounter = 1;
     private GraphType graphType = GraphType.UNDIRECTED;
+
+    // Variáveis para visualização da AGM
+    private List<Connection> mstEdges = new ArrayList<>();
+    private boolean showMST = false;
+    private double mstTotalWeight = 0.0;
+
 
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
@@ -434,6 +441,147 @@ public class GraphPanel extends JPanel {
         return null;
     }
 
+    // AGM --------------------------------------------------------------------------------
+    public List<Connection> applyPrimAlgorithm() {
+        // Verifica se o grafo é apropriado para AGM
+        if (graphType == GraphType.DIRECTED) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O algoritmo de Prim só pode ser aplicado em grafos não dirigidos!",
+                    "Erro - Algoritmo de Prim",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return null;
+        }
+
+        if (vertexList.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Erro - Algoritmo de Prim",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        if (connectionList.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui arestas!",
+                    "Erro - Algoritmo de Prim",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        // Verifica se o grafo é conexo
+        if (!Prim.isConnected(vertexList, connectionList)) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não é conexo! O algoritmo de Prim requer um grafo conexo.",
+                    "Erro - Algoritmo de Prim",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return null;
+        }
+
+        // Solicita ao usuário o vértice inicial
+        String[] vertexIds = vertexList.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+
+        String startVertexId = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecione o vértice inicial para o algoritmo de Prim:",
+                "Algoritmo de Prim - Vértice Inicial",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                vertexIds,
+                vertexIds[0]
+        );
+
+        if (startVertexId == null) {
+            return null; // Usuário cancelou
+        }
+
+        Vertex startVertex = vertexList.stream()
+                .filter(v -> v.getId().equals(startVertexId))
+                .findFirst()
+                .orElse(null);
+
+        if (startVertex == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Vértice inicial não encontrado!",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return null;
+        }
+
+        // Executa o algoritmo de Prim
+        Prim.PrimResult result = Prim.findMinimumSpanningTree(vertexList, connectionList, startVertex);
+
+        if (result != null) {
+            // Armazena os resultados para visualização
+            mstEdges = result.getMstEdges();
+            mstTotalWeight = result.getTotalWeight();
+            showMST = true;
+
+            // Mostra resultado detalhado
+            String edgesList = mstEdges.stream()
+                    .map(c -> String.format("%s (%.2f)", c.getId(), c.getWeight()))
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+
+            String message = String.format(
+                    "✓ Árvore Geradora Mínima (AGM) encontrada!\n\n" +
+                            "Vértice inicial: %s\n" +
+                            "Número de arestas na AGM: %d\n" +
+                            "Peso total da AGM: %.2f\n\n" +
+                            "Arestas selecionadas:\n%s\n\n" +
+                            "A AGM será destacada em verde no grafo.",
+                    startVertexId,
+                    result.getEdgeCount(),
+                    result.getTotalWeight(),
+                    edgesList
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    message,
+                    "Algoritmo de Prim - Resultado",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            repaint();
+
+            System.out.printf("Prim executado com sucesso. AGM com %d arestas, peso total: %.2f%n",
+                    result.getEdgeCount(), result.getTotalWeight());
+
+            return result.getMstEdges();
+        }
+
+        return null;
+    }
+
+    public void clearMST() {
+        mstEdges.clear();
+        showMST = false;
+        mstTotalWeight = 0.0;
+        repaint();
+    }
+
+    public boolean isMSTVisible() {
+        return showMST;
+    }
+
+    public List<Connection> getMSTEdges() {
+        return new ArrayList<>(mstEdges);
+    }
+
+    // AGM --------------------------------------------------------------------------------
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -442,15 +590,28 @@ public class GraphPanel extends JPanel {
 
         // Desenha as conexões primeiro (para ficarem atrás dos vértices)
         for (Connection connection : connectionList) {
-            connection.draw(g);
+            // Se estiver mostrando a AGM, destaca as arestas selecionadas
+            if (showMST && mstEdges.contains(connection)) {
+                drawMSTConnection(g2d, connection);
+            } else {
+                connection.draw(g);
+            }
         }
+
 
         for (Vertex vertex : vertexList) {
             vertex.draw(g);
         }
 
         drawGraphTypeInfo(g2d);
+
+        // Desenha informações da AGM se estiver visível
+        if (showMST && !mstEdges.isEmpty()) {
+            drawMSTInfo(g2d);
+        }
     }
+
+    // Funções de draw ------------------------------------------------------------------------
 
     private void drawGraphTypeInfo(Graphics2D g2d) {
         g2d.setColor(Color.GRAY);
@@ -458,6 +619,70 @@ public class GraphPanel extends JPanel {
         String typeText = graphType == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido";
         g2d.drawString("Tipo: " + typeText, 10, 20);
     }
+
+    private void drawMSTConnection(Graphics2D g2d, Connection connection) {
+        // Salva o estado original
+        Color originalColor = g2d.getColor();
+        Stroke originalStroke = g2d.getStroke();
+
+        // Define estilo para arestas da AGM
+        g2d.setColor(new Color(0, 150, 0)); // Verde escuro
+        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+
+        // Desenha a linha da conexão
+        g2d.drawLine(
+                connection.getSource().getX(),
+                connection.getSource().getY(),
+                connection.getTarget().getX(),
+                connection.getTarget().getY()
+        );
+
+        // Desenha o peso e ID com destaque
+        drawMSTWeightAndId(g2d, connection);
+
+        // Restaura o estado original
+        g2d.setColor(originalColor);
+        g2d.setStroke(originalStroke);
+    }
+
+    private void drawMSTWeightAndId(Graphics2D g2d, Connection connection) {
+        int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
+        int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
+
+        g2d.setFont(new Font("Arial", Font.BOLD, 15));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        String combinedText = connection.getId() + "(" + connection.getWeight() + ")";
+        int textWidth = fm.stringWidth(combinedText);
+        int textHeight = fm.getHeight();
+
+        int paddingX = 6;
+        int paddingY = 4;
+
+        // Fundo verde claro para destacar
+        g2d.setColor(new Color(200, 255, 200));
+        g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Borda verde escura
+        g2d.setColor(new Color(0, 150, 0));
+        g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Texto em verde escuro
+        g2d.setColor(new Color(0, 100, 0));
+        g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
+    }
+
+    private void drawMSTInfo(Graphics2D g2d) {
+        g2d.setColor(new Color(0, 100, 0));
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+
+        String mstInfo = String.format("AGM: %d arestas, Peso total: %.2f",
+                mstEdges.size(), mstTotalWeight);
+        g2d.drawString(mstInfo, 10, getHeight() - 10);
+    }
+
 
     // ------------------------------- Matrizes
     public int[][] getAdjacencyMatrix() {

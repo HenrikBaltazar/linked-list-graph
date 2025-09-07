@@ -9,7 +9,6 @@
 - [x] Retornar dados de aresta
 - [x] Matriz de adjacencia
 - [x] Matriz de incidencia
-- [ ] Arvore geradora
  
 ---
 

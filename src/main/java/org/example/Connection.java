@@ -2,7 +2,7 @@ package org.example;
 
 import java.awt.*;
 
-abstract class Connection {
+public abstract class Connection {
     protected String id;
     protected double weight;
     protected Vertex source;

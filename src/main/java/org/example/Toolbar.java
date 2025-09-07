@@ -2,8 +2,6 @@ package org.example;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -23,11 +21,11 @@ public class Toolbar extends JToolBar {
     private static final ImageIcon ICON_ADJMATRIX = new ImageIcon(resourcesPath + "a.png");
     private static final ImageIcon ICON_INCMATRIX = new ImageIcon(resourcesPath + "i.png");
     private static final ImageIcon ICON_CHECK_ADJACENCY = new ImageIcon(resourcesPath + "adjacent.png");
+    private static final ImageIcon ICON_PRIM = new ImageIcon(resourcesPath + "prim.png");
 
-
-    private JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
-    private JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton;
-    private Interface ui;
+    private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
+    private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton;
+    private final Interface ui;
 
     public Toolbar(Interface ui) {
         this.ui = ui;
@@ -43,6 +41,7 @@ public class Toolbar extends JToolBar {
         adjMatrixButton = new JButton(ICON_ADJMATRIX);
         incMatrixButton = new JButton(ICON_INCMATRIX);
         checkAdjacencyButton = new JButton(ICON_CHECK_ADJACENCY);
+        primButton = new JButton(ICON_PRIM);
 
         addButton.setSelectedIcon(ICON_ADD_SELECTED);
         removeButton.setSelectedIcon(ICON_REMOVE_SELECTED);
@@ -58,6 +57,7 @@ public class Toolbar extends JToolBar {
         adjMatrixButton.setToolTipText("Gerar Matriz de Adjacência");
         incMatrixButton.setToolTipText("Gerar Matriz de Incidência");
         checkAdjacencyButton.setToolTipText("Verificar se vértices são adjacentes");
+        primButton.setToolTipText("Aplicar algoritmo de Prim (AGM)");
 
         configureToggleAppearance(addButton);
         configureToggleAppearance(removeButton);
@@ -67,6 +67,7 @@ public class Toolbar extends JToolBar {
         configureButtonAppearance(adjMatrixButton);
         configureButtonAppearance(incMatrixButton);
         configureButtonAppearance(checkAdjacencyButton);
+        configureButtonAppearance(primButton);
 
         ButtonGroup toolModeGroup = new ButtonGroup();
         toolModeGroup.add(addButton);
@@ -92,61 +93,36 @@ public class Toolbar extends JToolBar {
         add(adjMatrixButton);
         add(incMatrixButton);
         add(checkAdjacencyButton);
+        add(primButton);
 
         addButton.setSelected(true);
         addButtonAction();
     }
 
+    // Listeners -------------------------------------------------------------------------------------
+
     private void setupActionListeners() {
-        addButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                addButtonAction();
-            }
-        });
+        addButton.addActionListener(_ -> addButtonAction());
 
-        removeButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                removeButtonAction();
-            }
-        });
+        removeButton.addActionListener(_ -> removeButtonAction());
 
-        connectButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                connectButtonAction();
-            }
-        });
+        connectButton.addActionListener(_ -> connectButtonAction());
 
-        disconnectButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                disconnectButtonAction();
-            }
-        });
+        disconnectButton.addActionListener(_ -> disconnectButtonAction());
 
-        orientationButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                orientationButtonAction();
-            }
-        });
+        orientationButton.addActionListener(_ -> orientationButtonAction());
 
-        adjMatrixButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                adjMatrixButtonAction();
-            }
-        });
+        adjMatrixButton.addActionListener(_ -> adjMatrixButtonAction());
 
-        incMatrixButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                incMatrixButtonAction();
-            }
-        });
+        incMatrixButton.addActionListener(_ -> incMatrixButtonAction());
 
-        checkAdjacencyButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                checkAdjacencyButtonAction();
-            }
-        });
+        checkAdjacencyButton.addActionListener(_ -> checkAdjacencyButtonAction());
+
+        primButton.addActionListener(_ -> primButtonAction());
 
     }
+
+    // Appearance ------------------------------------------------------------------------------------
 
     private void configureButtonAppearance(JButton button) {
         button.setBackground(new Color(159, 197, 232));
@@ -160,6 +136,7 @@ public class Toolbar extends JToolBar {
         button.setFocusPainted(false);
     }
 
+    // Button action ---------------------------------------------------------------------------------
     public void addButtonAction() {
         ui.getGraphPanel().setToolMode(GraphPanel.ToolMode.ADD_NODE);
     }
@@ -264,6 +241,38 @@ public class Toolbar extends JToolBar {
         ui.getGraphPanel().checkVertexAdjacency();
     }
 
+    public void primButtonAction() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+
+        // Se já está mostrando uma AGM, pergunta se quer limpar ou calcular nova
+        if (graphPanel.isMSTVisible()) {
+            int option = JOptionPane.showConfirmDialog(
+                    this,
+                    "Uma AGM já está sendo exibida. Deseja calcular uma nova AGM?\n" +
+                            "(Isso irá substituir a AGM atual)",
+                    "AGM já exibida",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
+                return;
+            } else if (option == JOptionPane.NO_OPTION) {
+                graphPanel.clearMST();
+                return;
+            }
+            // Se YES, continua para calcular nova AGM
+        }
+
+        List<Connection> mst = graphPanel.applyPrimAlgorithm();
+
+        if (mst != null && !mst.isEmpty()) {
+            System.out.println("Algoritmo de Prim executado com sucesso!");
+        }
+    }
+
+
+    // Outros métodos --------------------------------------------------------------------------------
     private void updateTooltipsForGraphType() {
         GraphType currentType = ui.getGraphPanel().getGraphType();
         String connectionType = currentType == GraphType.DIRECTED ? "arcos" : "arestas";
@@ -316,32 +325,4 @@ public class Toolbar extends JToolBar {
         frame.setVisible(true);
     }
 
-    // Mantém compatibilidade com método original
-    public void matrixFrame(int[][] matrix, String title) {
-        int n = matrix.length;
-        int m = matrix[0].length;
-
-        Object[][] data = new Object[n][m];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < m; j++) {
-                data[i][j] = matrix[i][j];
-            }
-        }
-
-        String[] colNames = new String[m];
-        for (int j = 0; j < m; j++) {
-            colNames[j] = "C" + (j + 1);
-        }
-
-        JTable table = new JTable(data, colNames);
-        table.setEnabled(false);
-        table.setRowHeight(30);
-
-        JFrame frame = new JFrame(title);
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.add(new JScrollPane(table));
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-    }
 }
