@@ -5,13 +5,16 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import org.example.algorithms.Prim;
+import java.util.Map;
+
+import org.example.algorithms.*;
 
 public class GraphPanel extends JPanel {
 
-    private List<Vertex> vertexList = new ArrayList<>();
-    private List<Connection> connectionList = new ArrayList<>(); // Pode ser arestas ou arcos
+    private final List<Vertex> vertexList = new ArrayList<>();
+    private final List<Connection> connectionList = new ArrayList<>(); // Pode ser arestas ou arcos
 
     public enum ToolMode { ADD_NODE, REMOVE, CONNECT, DISCONNECT }
     private ToolMode currentMode = ToolMode.ADD_NODE;
@@ -25,6 +28,12 @@ public class GraphPanel extends JPanel {
     private boolean showMST = false;
     private double mstTotalWeight = 0.0;
 
+    // Variáveis para visualização da BFS
+    private List<Connection> bfsTreeEdges = new ArrayList<>();
+    private List<Vertex> bfsVisitOrder = new ArrayList<>();
+    private boolean showBFS = false;
+    private Vertex bfsStartVertex = null;
+    private Map<Vertex, Integer> bfsDistances = new HashMap<>();
 
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
@@ -37,7 +46,6 @@ public class GraphPanel extends JPanel {
 
         // addVertex(100, 100);
     }
-
 
     public void addVertex(int x, int y) {
         String id = String.valueOf(nextVertexIdCounter++);
@@ -443,7 +451,6 @@ public class GraphPanel extends JPanel {
 
     // AGM --------------------------------------------------------------------------------
     public List<Connection> applyPrimAlgorithm() {
-        // Verifica se o grafo é apropriado para AGM
         if (graphType == GraphType.DIRECTED) {
             JOptionPane.showMessageDialog(
                     this,
@@ -474,7 +481,6 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Verifica se o grafo é conexo
         if (!Prim.isConnected(vertexList, connectionList)) {
             JOptionPane.showMessageDialog(
                     this,
@@ -580,7 +586,129 @@ public class GraphPanel extends JPanel {
         return new ArrayList<>(mstEdges);
     }
 
-    // AGM --------------------------------------------------------------------------------
+    // FIM AGM ----------------------------------------------------------------------------
+
+    // BFS --------------------------------------------------------------------------------
+    public List<Connection> applyBreadthFirstSearch() {
+        if (vertexList.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "O grafo não possui vértices!",
+                    "Erro - Busca em Largura",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return null;
+        }
+
+        // Solicita ao usuário o vértice inicial
+        String[] vertexIds = vertexList.stream()
+                .map(Vertex::getId)
+                .toArray(String[]::new);
+
+        String startVertexId = (String) JOptionPane.showInputDialog(
+                this,
+                "Selecione o vértice inicial para a Busca em Largura:",
+                "Busca em Largura (BFS) - Vértice Inicial",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                vertexIds,
+                vertexIds[0]
+        );
+
+        if (startVertexId == null) {
+            return null; // Usuário cancelou
+        }
+
+        Vertex startVertex = vertexList.stream()
+                .filter(v -> v.getId().equals(startVertexId))
+                .findFirst()
+                .orElse(null);
+
+        if (startVertex == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Vértice inicial não encontrado!",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return null;
+        }
+
+        // Executa a busca em largura
+        BreadthFirstSearch.BFSResult result = BreadthFirstSearch.performBFS(vertexList, connectionList, startVertex);
+
+        if (result != null) {
+            // Armazena os resultados para visualização
+            bfsTreeEdges = result.getTreeEdges();
+            bfsVisitOrder = result.getVisitOrder();
+            bfsStartVertex = result.getStartVertex();
+            bfsDistances = result.getDistances();
+            showBFS = true;
+
+            // Mostra resultado detalhado
+            String visitOrderText = bfsVisitOrder.stream()
+                    .map(v -> v.getId() + "(d:" + bfsDistances.get(v) + ")")
+                    .reduce((a, b) -> a + " → " + b)
+                    .orElse("");
+
+            String treeEdgesText = bfsTreeEdges.stream()
+                    .map(Connection::getId)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("Nenhuma");
+
+            String message = String.format(
+                    "✓ Busca em Largura (BFS) executada!\n\n" +
+                            "Vértice inicial: %s\n" +
+                            "Vértices visitados: %d de %d\n" +
+                            "Arestas na árvore BFS: %d\n\n" +
+                            "Ordem de visita:\n%s\n\n" +
+                            "Arestas da árvore BFS:\n%s\n\n" +
+                            "A árvore BFS será destacada em azul no grafo.\n" +
+                            "Os números nos vértices mostram a distância do vértice inicial.",
+                    startVertexId,
+                    result.getVisitedVertexCount(),
+                    vertexList.size(),
+                    result.getTreeEdgeCount(),
+                    visitOrderText,
+                    treeEdgesText
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    message,
+                    "Busca em Largura - Resultado",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            repaint();
+
+            System.out.printf("BFS executada com sucesso. %d vértices visitados, %d arestas na árvore%n",
+                    result.getVisitedVertexCount(), result.getTreeEdgeCount());
+
+            return result.getTreeEdges();
+        }
+
+        return null;
+    }
+
+    public void clearBFS() {
+        bfsTreeEdges.clear();
+        bfsVisitOrder.clear();
+        bfsDistances.clear();
+        showBFS = false;
+        bfsStartVertex = null;
+        repaint();
+    }
+
+    public boolean isBFSVisible() {
+        return showBFS;
+    }
+
+    public List<Connection> getBFSTreeEdges() {
+        return new ArrayList<>(bfsTreeEdges);
+    }
+
+    // FIM BFS ----------------------------------------------------------------------------
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -590,17 +718,25 @@ public class GraphPanel extends JPanel {
 
         // Desenha as conexões primeiro (para ficarem atrás dos vértices)
         for (Connection connection : connectionList) {
-            // Se estiver mostrando a AGM, destaca as arestas selecionadas
-            if (showMST && mstEdges.contains(connection)) {
+            boolean isMSTEdge = showMST && mstEdges.contains(connection);
+            boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
+
+            if (isMSTEdge) {
                 drawMSTConnection(g2d, connection);
+            } else if (isBFSEdge) {
+                drawBFSConnection(g2d, connection);
             } else {
                 connection.draw(g);
             }
         }
 
-
+        // Desenha os vértices
         for (Vertex vertex : vertexList) {
-            vertex.draw(g);
+            if (showBFS && bfsVisitOrder.contains(vertex)) {
+                drawBFSVertex(g2d, vertex);
+            } else {
+                vertex.draw(g);
+            }
         }
 
         drawGraphTypeInfo(g2d);
@@ -609,7 +745,13 @@ public class GraphPanel extends JPanel {
         if (showMST && !mstEdges.isEmpty()) {
             drawMSTInfo(g2d);
         }
+
+        // Desenha informações da BFS se estiver visível
+        if (showBFS && !bfsTreeEdges.isEmpty()) {
+            drawBFSInfo(g2d);
+        }
     }
+
 
     // Funções de draw ------------------------------------------------------------------------
 
@@ -683,8 +825,109 @@ public class GraphPanel extends JPanel {
         g2d.drawString(mstInfo, 10, getHeight() - 10);
     }
 
+    private void drawBFSConnection(Graphics2D g2d, Connection connection) {
+        // Salva o estado original
+        Color originalColor = g2d.getColor();
+        Stroke originalStroke = g2d.getStroke();
 
-    // ------------------------------- Matrizes
+        // Define estilo para arestas da árvore BFS
+        g2d.setColor(new Color(0, 100, 200)); // Azul
+        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+
+        // Desenha a linha da conexão
+        g2d.drawLine(
+                connection.getSource().getX(),
+                connection.getSource().getY(),
+                connection.getTarget().getX(),
+                connection.getTarget().getY()
+        );
+
+        // Desenha o peso e ID com destaque azul
+        drawBFSWeightAndId(g2d, connection);
+
+        // Restaura o estado original
+        g2d.setColor(originalColor);
+        g2d.setStroke(originalStroke);
+    }
+
+    private void drawBFSWeightAndId(Graphics2D g2d, Connection connection) {
+        int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
+        int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
+
+        g2d.setFont(new Font("Arial", Font.BOLD, 15));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        String combinedText = connection.getId() + "(" + connection.getWeight() + ")";
+        int textWidth = fm.stringWidth(combinedText);
+        int textHeight = fm.getHeight();
+
+        int paddingX = 6;
+        int paddingY = 4;
+
+        // Fundo azul claro para destacar
+        g2d.setColor(new Color(200, 220, 255));
+        g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Borda azul escura
+        g2d.setColor(new Color(0, 100, 200));
+        g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        // Texto em azul escuro
+        g2d.setColor(new Color(0, 80, 160));
+        g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
+    }
+
+    private void drawBFSVertex(Graphics2D g2d, Vertex vertex) {
+        // Desenha o vértice normal primeiro
+        vertex.draw(g2d);
+
+        // Adiciona informações da BFS
+        if (bfsDistances.containsKey(vertex)) {
+            int distance = bfsDistances.get(vertex);
+
+            // Posição para o texto da distância
+            int x = vertex.getX();
+            int y = vertex.getY() - 35; // Acima do vértice
+
+            g2d.setFont(new Font("Arial", Font.BOLD, 12));
+            FontMetrics fm = g2d.getFontMetrics();
+            String distText = "d:" + distance;
+            int textWidth = fm.stringWidth(distText);
+
+            // Fundo para melhor legibilidade
+            g2d.setColor(new Color(200, 220, 255, 200));
+            g2d.fillOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
+
+            // Borda
+            g2d.setColor(new Color(0, 100, 200));
+            g2d.drawOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
+
+            // Texto da distância
+            g2d.setColor(new Color(0, 80, 160));
+            g2d.drawString(distText, x - textWidth/2, y + 4);
+
+            // Destaque especial para o vértice inicial
+            if (vertex.equals(bfsStartVertex)) {
+                g2d.setStroke(new BasicStroke(3));
+                g2d.setColor(new Color(0, 150, 255));
+                g2d.drawOval(vertex.getX() - 27, vertex.getY() - 27, 54, 54);
+            }
+        }
+    }
+
+    private void drawBFSInfo(Graphics2D g2d) {
+        g2d.setColor(new Color(0, 80, 160));
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+
+        String bfsInfo = String.format("BFS: %d vértices visitados, %d arestas na árvore",
+                bfsVisitOrder.size(), bfsTreeEdges.size());
+        g2d.drawString(bfsInfo, 10, getHeight() - 30);
+    }
+
+    // Matrizes -------------------------------------------------------------------------------
+
     public int[][] getAdjacencyMatrix() {
         int n = vertexList.size();
         int[][] matrix = new int[n][n];
@@ -742,7 +985,8 @@ public class GraphPanel extends JPanel {
         return matrix;
     }
 
-    // ------------------------------- Getters para acesso às listas
+    // Getters para acesso às listas -------------------------------
+
     public List<Vertex> getVertexList() { return new ArrayList<>(vertexList); }
     public List<Connection> getConnectionList() { return new ArrayList<>(connectionList); }
     public GraphType getGraphType() { return graphType; }
@@ -773,6 +1017,5 @@ public class GraphPanel extends JPanel {
             );
         }
     }
-
 
 }

@@ -21,11 +21,11 @@ identificador e seu valor; (**0,5**)
 (aresta/arco); (**1,5**)
   - [x] Obs.: em substituição a este item, o programa deverá montar/mostrar a matriz de adjacência
   do grafo e montar/mostrar a matriz de incidência do grafo (valendo apenas **0,5 por matriz**).
-- [ ] aplicar o algoritmo de PRIM no grafo e apresentar graficamente a Árvore Geradora Mínima
+- [x] aplicar o algoritmo de PRIM no grafo e apresentar graficamente a Árvore Geradora Mínima
 (AGM) produzida; (**1,5**)
-- [ ] aplicar a Busca em Largura no grafo, definindo o vértice de saída, e apresentar graficamente
+- [x] aplicar a Busca em Largura (BFS) no grafo, definindo o vértice de saída, e apresentar graficamente
 árvore gerada; (**1,5**)
-- [ ] aplicar a Busca em Profundidade no grafo, definindo o vértice de saída, e apresentar
+- [ ] aplicar a Busca em Profundidade (DFS) no grafo, definindo o vértice de saída, e apresentar
 graficamente árvore gerada; (**1,5**)
 - [ ] determinar as componentes conexas/fortemente conexas do grafo e apresentar na tela os
 conjuntos. (**1,5**)

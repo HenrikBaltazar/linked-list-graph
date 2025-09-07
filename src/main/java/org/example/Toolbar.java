@@ -22,9 +22,11 @@ public class Toolbar extends JToolBar {
     private static final ImageIcon ICON_INCMATRIX = new ImageIcon(resourcesPath + "i.png");
     private static final ImageIcon ICON_CHECK_ADJACENCY = new ImageIcon(resourcesPath + "adjacent.png");
     private static final ImageIcon ICON_PRIM = new ImageIcon(resourcesPath + "prim.png");
+    private static final ImageIcon ICON_BFS = new ImageIcon(resourcesPath + "prim.png");
+
 
     private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
-    private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton;
+    private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton, bfsButton;
     private final Interface ui;
 
     public Toolbar(Interface ui) {
@@ -42,6 +44,7 @@ public class Toolbar extends JToolBar {
         incMatrixButton = new JButton(ICON_INCMATRIX);
         checkAdjacencyButton = new JButton(ICON_CHECK_ADJACENCY);
         primButton = new JButton(ICON_PRIM);
+        bfsButton = new JButton(ICON_BFS);
 
         addButton.setSelectedIcon(ICON_ADD_SELECTED);
         removeButton.setSelectedIcon(ICON_REMOVE_SELECTED);
@@ -58,6 +61,7 @@ public class Toolbar extends JToolBar {
         incMatrixButton.setToolTipText("Gerar Matriz de Incidência");
         checkAdjacencyButton.setToolTipText("Verificar se vértices são adjacentes");
         primButton.setToolTipText("Aplicar algoritmo de Prim (AGM)");
+        bfsButton.setToolTipText("Aplicar Busca em Largura (BFS)");
 
         configureToggleAppearance(addButton);
         configureToggleAppearance(removeButton);
@@ -68,6 +72,7 @@ public class Toolbar extends JToolBar {
         configureButtonAppearance(incMatrixButton);
         configureButtonAppearance(checkAdjacencyButton);
         configureButtonAppearance(primButton);
+        configureButtonAppearance(bfsButton);
 
         ButtonGroup toolModeGroup = new ButtonGroup();
         toolModeGroup.add(addButton);
@@ -94,6 +99,7 @@ public class Toolbar extends JToolBar {
         add(incMatrixButton);
         add(checkAdjacencyButton);
         add(primButton);
+        add(bfsButton);
 
         addButton.setSelected(true);
         addButtonAction();
@@ -119,6 +125,8 @@ public class Toolbar extends JToolBar {
         checkAdjacencyButton.addActionListener(_ -> checkAdjacencyButtonAction());
 
         primButton.addActionListener(_ -> primButtonAction());
+
+        bfsButton.addActionListener(_ -> bfsButtonAction());
 
     }
 
@@ -271,6 +279,40 @@ public class Toolbar extends JToolBar {
         }
     }
 
+    public void bfsButtonAction() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+
+        // Se já está mostrando uma BFS, pergunta se quer limpar ou calcular nova
+        if (graphPanel.isBFSVisible()) {
+            int option = JOptionPane.showConfirmDialog(
+                    this,
+                    "Uma árvore BFS já está sendo exibida. Deseja executar uma nova BFS?\n" +
+                            "(Isso irá substituir a árvore BFS atual)",
+                    "BFS já exibida",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
+                return;
+            } else if (option == JOptionPane.NO_OPTION) {
+                graphPanel.clearBFS();
+                return;
+            }
+            // Se YES, continua para calcular nova BFS
+        }
+
+        // Limpa AGM se estiver visível para evitar confusão visual
+        if (graphPanel.isMSTVisible()) {
+            graphPanel.clearMST();
+        }
+
+        List<Connection> bfsTree = graphPanel.applyBreadthFirstSearch();
+
+        if (bfsTree != null) {
+            System.out.println("Busca em Largura executada com sucesso!");
+        }
+    }
 
     // Outros métodos --------------------------------------------------------------------------------
     private void updateTooltipsForGraphType() {
