@@ -9,8 +9,8 @@
 - [x] Retornar dados de aresta
 - [x] Matriz de adjacencia
 - [x] Matriz de incidencia
-- [ ] Confirmar que todos os resultados estão corretos.
-- [ ] Utilizar ícones diferentes para os algoritmos
+- [x] Confirmar que todos os resultados estão corretos.
+- [x] Utilizar ícones diferentes para os algoritmos
 - 
 ---
 
@@ -29,5 +29,5 @@ identificador e seu valor; (**0,5**)
 árvore gerada; (**1,5**)
 - [x] aplicar a Busca em Profundidade (DFS) no grafo, definindo o vértice de saída, e apresentar
 graficamente árvore gerada; (**1,5**)
-- [ ] determinar as componentes conexas/fortemente conexas do grafo e apresentar na tela os
+- [x] determinar as componentes conexas/fortemente conexas do grafo e apresentar na tela os
 conjuntos. (**1,5**)

@@ -1,29 +1,28 @@
 package org.example;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.InputStream;
 import java.util.List;
 
 public class Toolbar extends JToolBar {
-    private static final String resourcesPath = "src/main/resources/";
-    private static final ImageIcon ICON_ADD = new ImageIcon(resourcesPath + "add.png");
-    private static final ImageIcon ICON_ADD_SELECTED = new ImageIcon(resourcesPath + "selected_add.png");
-    private static final ImageIcon ICON_REMOVE = new ImageIcon(resourcesPath + "remove.png");
-    private static final ImageIcon ICON_REMOVE_SELECTED = new ImageIcon(resourcesPath + "selected_remove.png");
-    private static final ImageIcon ICON_CONNECT = new ImageIcon(resourcesPath + "connect.png");
-    private static final ImageIcon ICON_CONNECT_SELECTED = new ImageIcon(resourcesPath + "selected_connect.png");
-    private static final ImageIcon ICON_DISCONNECT = new ImageIcon(resourcesPath + "disconnect.png");
-    private static final ImageIcon ICON_DISCONNECT_SELECTED = new ImageIcon(resourcesPath + "selected_disconnect.png");
-    private static final ImageIcon ICON_ORIENTATION = new ImageIcon(resourcesPath + "orientation.png");
-    private static final ImageIcon ICON_ORIENTATION_SELECTED = new ImageIcon(resourcesPath + "selected_orientation.png");
-    private static final ImageIcon ICON_ADJMATRIX = new ImageIcon(resourcesPath + "a.png");
-    private static final ImageIcon ICON_INCMATRIX = new ImageIcon(resourcesPath + "i.png");
-    private static final ImageIcon ICON_CHECK_ADJACENCY = new ImageIcon(resourcesPath + "adjacent.png");
-    private static final ImageIcon ICON_PRIM = new ImageIcon(resourcesPath + "prim.png");
-    private static final ImageIcon ICON_BFS = new ImageIcon(resourcesPath + "prim.png");
-    private static final ImageIcon ICON_DFS = new ImageIcon(resourcesPath + "prim.png");
+    private static final String ICON_ADD = "/add.png";
+    private static final String ICON_ADD_SELECTED = "/selected_add.png";
+    private static final String ICON_REMOVE = "/remove.png";
+    private static final String ICON_REMOVE_SELECTED = "/selected_remove.png";
+    private static final String ICON_CONNECT = "/connect.png";
+    private static final String ICON_CONNECT_SELECTED = "/selected_connect.png";
+    private static final String ICON_DISCONNECT = "/disconnect.png";
+    private static final String ICON_DISCONNECT_SELECTED = "/selected_disconnect.png";
+    private static final String ICON_ORIENTATION = "/orientation.png";
+    private static final String ICON_ORIENTATION_SELECTED = "/selected_orientation.png";
+    private static final String ICON_ADJMATRIX = "/a.png";
+    private static final String ICON_INCMATRIX = "/i.png";
+    private static final String ICON_CHECK_ADJACENCY = "/adjacent.png";
+    private static final String ICON_PRIM = "/prim.png";
     private static final Font FONT_BUTTON = new Font("Monospaced", Font.BOLD,28);
 
     private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
@@ -36,14 +35,14 @@ public class Toolbar extends JToolBar {
         setVisible(true);
         setBackground(new Color(159, 197, 232));
 
-        addButton = new JToggleButton(ICON_ADD);
-        removeButton = new JToggleButton(ICON_REMOVE);
-        connectButton = new JToggleButton(ICON_CONNECT);
-        disconnectButton = new JToggleButton(ICON_DISCONNECT);
-        orientationButton = new JToggleButton(ICON_ORIENTATION);
-        adjMatrixButton = new JButton(ICON_ADJMATRIX);
-        incMatrixButton = new JButton(ICON_INCMATRIX);
-        checkAdjacencyButton = new JButton(ICON_CHECK_ADJACENCY);
+        addButton = new JToggleButton(loadIcon(ICON_ADD));
+        removeButton = new JToggleButton(loadIcon(ICON_REMOVE));
+        connectButton = new JToggleButton(loadIcon(ICON_CONNECT));
+        disconnectButton = new JToggleButton(loadIcon(ICON_DISCONNECT));
+        orientationButton = new JToggleButton(loadIcon(ICON_ORIENTATION));
+        adjMatrixButton = new JButton(loadIcon(ICON_ADJMATRIX));
+        incMatrixButton = new JButton(loadIcon(ICON_INCMATRIX));
+        checkAdjacencyButton = new JButton(loadIcon(ICON_CHECK_ADJACENCY));
         primButton = new JButton("PRIM");
         primButton.setFont(FONT_BUTTON);
         bfsButton = new JButton("BFS");
@@ -53,11 +52,11 @@ public class Toolbar extends JToolBar {
         conexoButton = new JButton("C.CONEXAS");
         conexoButton.setFont(FONT_BUTTON);
 
-        addButton.setSelectedIcon(ICON_ADD_SELECTED);
-        removeButton.setSelectedIcon(ICON_REMOVE_SELECTED);
-        connectButton.setSelectedIcon(ICON_CONNECT_SELECTED);
-        disconnectButton.setSelectedIcon(ICON_DISCONNECT_SELECTED);
-        orientationButton.setSelectedIcon(ICON_ORIENTATION_SELECTED);
+        addButton.setSelectedIcon(loadIcon(ICON_ADD_SELECTED));
+        removeButton.setSelectedIcon(loadIcon(ICON_REMOVE_SELECTED));
+        connectButton.setSelectedIcon(loadIcon(ICON_CONNECT_SELECTED));
+        disconnectButton.setSelectedIcon(loadIcon(ICON_DISCONNECT_SELECTED));
+        orientationButton.setSelectedIcon(loadIcon(ICON_ORIENTATION_SELECTED));
 
         addButton.setToolTipText("Adicionar vértice");
         removeButton.setToolTipText("Remover vértice (Modo Seleção)");
@@ -425,6 +424,18 @@ public class Toolbar extends JToolBar {
         frame.pack();
         frame.setLocationRelativeTo(this);
         frame.setVisible(true);
+    }
+    private ImageIcon loadIcon(String path) {
+        try (InputStream stream = getClass().getResourceAsStream(path)) {
+            if (stream == null) {
+                System.err.println("Erro: Não foi possível encontrar o recurso: " + path);
+                return null;
+            }
+            return new ImageIcon(ImageIO.read(stream));
+        } catch (Exception e) {
+            System.err.println("Erro ao carregar imagem " + path + ": " + e.getMessage());
+            return null;
+        }
     }
 
 }
