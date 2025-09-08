@@ -14,28 +14,26 @@ import org.example.algorithms.*;
 public class GraphPanel extends JPanel {
 
     private final List<Vertex> vertexList = new ArrayList<>();
-    private final List<Connection> connectionList = new ArrayList<>(); // Pode ser arestas ou arcos
+    private final List<Connection> connectionList = new ArrayList<>();
 
     public enum ToolMode { ADD_NODE, REMOVE, CONNECT, DISCONNECT }
+    public enum GraphType {DIRECTED, UNDIRECTED}
     private ToolMode currentMode = ToolMode.ADD_NODE;
+    private GraphType currentGraphType = GraphType.UNDIRECTED;
     private Vertex selectedNode = null;
     private int nextVertexIdCounter = 1;
     private int nextConnectionIdCounter = 1;
-    private GraphType graphType = GraphType.UNDIRECTED;
 
-    // Variáveis para visualização da AGM
     private List<Connection> mstEdges = new ArrayList<>();
     private boolean showMST = false;
     private double mstTotalWeight = 0.0;
 
-    // Variáveis para visualização da BFS
     private List<Connection> bfsTreeEdges = new ArrayList<>();
     private List<Vertex> bfsVisitOrder = new ArrayList<>();
     private boolean showBFS = false;
     private Vertex bfsStartVertex = null;
     private Map<Vertex, Integer> bfsDistances = new HashMap<>();
 
-    // Variáveis para visualização da DFS
     private List<Connection> dfsTreeEdges = new ArrayList<>();
     private List<Vertex> dfsVisitOrder = new ArrayList<>();
     private boolean showDFS = false;
@@ -43,6 +41,9 @@ public class GraphPanel extends JPanel {
     private Map<Vertex, Integer> dfsDiscoveryTimes = new HashMap<>();
     private Map<Vertex, Integer> dfsFinishTimes = new HashMap<>();
 
+    private boolean showComponents = false; // Substitua showConexo por showComponents
+    private Map<Vertex, Integer> componentMap = new HashMap<>();
+    private int numberOfComponents = 0;
 
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
@@ -65,16 +66,13 @@ public class GraphPanel extends JPanel {
     public boolean removeVertex(Vertex vertex) {
         if (vertex == null) return false;
 
-        // Remove todas as conexões (arestas/arcos) conectadas a este vértice
         connectionList.removeIf(connection ->
                 connection.getSource().equals(vertex) || connection.getTarget().equals(vertex));
 
-        // Remove o vértice da lista de adjacência dos outros vértices
         for (Vertex v : vertexList) {
             v.getNeighbours().remove(vertex);
         }
 
-        // Remove o vértice
         boolean removed = vertexList.remove(vertex);
 
         if (selectedNode == vertex) {
@@ -87,25 +85,23 @@ public class GraphPanel extends JPanel {
     public Connection addConnection(String connectionId, Vertex source, Vertex target, double weight) {
         if (source == null || target == null) return null;
 
-        // Para grafos não dirigidos, verifica se já existe uma aresta entre estes vértices
-        if (graphType == GraphType.UNDIRECTED && hasConnectionBetween(source, target)) {
+        if (currentGraphType == GraphType.UNDIRECTED && hasConnectionBetween(source, target)) {
             System.out.println("Já existe uma aresta entre " + source.getId() + " e " + target.getId());
             return null;
         }
 
-        // Para grafos dirigidos, verifica se já existe um arco com a mesma direção
-        if (graphType == GraphType.DIRECTED && hasDirectedConnectionBetween(source, target)) {
+        if (currentGraphType == GraphType.DIRECTED && hasDirectedConnectionBetween(source, target)) {
             System.out.println("Já existe um arco de " + source.getId() + " para " + target.getId());
             return null;
         }
 
         if (connectionId == null || connectionId.isEmpty()) {
-            String prefix = graphType == GraphType.DIRECTED ? "A" : "E"; // A para Arco, E para Edge
+            String prefix = currentGraphType == GraphType.DIRECTED ? "A" : "E";
             connectionId = prefix + nextConnectionIdCounter++;
         }
 
         Connection newConnection;
-        if (graphType == GraphType.DIRECTED) {
+        if (currentGraphType == GraphType.DIRECTED) {
             newConnection = new Arc(connectionId, source, target, weight);
         } else {
             newConnection = new Edge(connectionId, source, target, weight);
@@ -113,9 +109,8 @@ public class GraphPanel extends JPanel {
 
         connectionList.add(newConnection);
 
-        // Atualiza as listas de adjacência dos vértices
         source.addNeighbour(target);
-        if (graphType == GraphType.UNDIRECTED) {
+        if (currentGraphType == GraphType.UNDIRECTED) {
             target.addNeighbour(source);
         }
 
@@ -128,9 +123,8 @@ public class GraphPanel extends JPanel {
         boolean removed = connectionList.remove(connection);
 
         if (removed) {
-            // Remove da lista de adjacência
             connection.getSource().getNeighbours().remove(connection.getTarget());
-            if (graphType == GraphType.UNDIRECTED) {
+            if (currentGraphType == GraphType.UNDIRECTED) {
                 connection.getTarget().getNeighbours().remove(connection.getSource());
             }
         }
@@ -169,12 +163,10 @@ public class GraphPanel extends JPanel {
             return;
         }
 
-        // Cria array com os IDs dos vértices para seleção
         String[] vertexIds = vertexList.stream()
                 .map(Vertex::getId)
                 .toArray(String[]::new);
 
-        // Solicita o primeiro vértice
         String vertex1Id = (String) JOptionPane.showInputDialog(
                 this,
                 "Selecione o primeiro vértice:",
@@ -189,7 +181,6 @@ public class GraphPanel extends JPanel {
             return; // Usuário cancelou
         }
 
-        // Solicita o segundo vértice
         String vertex2Id = (String) JOptionPane.showInputDialog(
                 this,
                 "Selecione o segundo vértice:",
@@ -204,7 +195,6 @@ public class GraphPanel extends JPanel {
             return; // Usuário cancelou
         }
 
-        // Busca os vértices pelos IDs
         Vertex vertex1 = vertexList.stream()
                 .filter(v -> v.getId().equals(vertex1Id))
                 .findFirst()
@@ -225,10 +215,9 @@ public class GraphPanel extends JPanel {
             return;
         }
 
-        // Verifica adjacência
         boolean adjacent = areAdjacent(vertex1, vertex2);
 
-        String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
+        String connectionType = currentGraphType == GraphType.DIRECTED ? "arco" : "aresta";
         String message;
 
         if (adjacent) {
@@ -236,7 +225,7 @@ public class GraphPanel extends JPanel {
             Connection connection = findConnectionBetween(vertex1, vertex2);
             if (connection != null) {
                 String direction;
-                if (graphType == GraphType.DIRECTED) {
+                if (currentGraphType == GraphType.DIRECTED) {
                     // Para grafos dirigidos, verifica a direção
                     if (connection.getSource().equals(vertex1)) {
                         direction = vertex1Id + " → " + vertex2Id;
@@ -355,12 +344,10 @@ public class GraphPanel extends JPanel {
 
             case REMOVE:
                 if (clickedNode != null) {
-                    // Se o modo é SELECT (ou REMOVE), e clicamos em um nó, removemos ele.
-                    // Primeiro selecionamos para dar feedback visual (se a remoção falhar)
+
                     selectNode(clickedNode);
-                    removeSelectedNode(); // Executa a remoção imediatamente ao clicar no nó
+                    removeSelectedNode();
                 } else {
-                    // Clicou fora de um nó, desmarca qualquer seleção
                     selectNode(null);
                 }
                 break;
@@ -368,13 +355,11 @@ public class GraphPanel extends JPanel {
             case CONNECT:
                 if (clickedNode != null) {
                     if (selectedNode == null) {
-                        // Seleciona o primeiro nó para a conexão
                         selectNode(clickedNode);
                     } else {
-                        // Conecta o primeiro nó (selectedNode) ao segundo (clickedNode)
                         if (clickedNode != selectedNode) {
-                            String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
-                            String direction = graphType == GraphType.DIRECTED ?
+                            String connectionType = currentGraphType == GraphType.DIRECTED ? "arco" : "aresta";
+                            String direction = currentGraphType == GraphType.DIRECTED ?
                                     selectedNode.getId() + " → " + clickedNode.getId() :
                                     selectedNode.getId() + " ↔ " + clickedNode.getId();
 
@@ -383,7 +368,7 @@ public class GraphPanel extends JPanel {
                             String weightStr = JOptionPane.showInputDialog(
                                     this,
                                     "Digite o peso da " + connectionType + ":",
-                                    "Peso da " + (graphType == GraphType.DIRECTED ? "Arco" : "Aresta"),
+                                    "Peso da " + (currentGraphType == GraphType.DIRECTED ? "Arco" : "Aresta"),
                                     JOptionPane.QUESTION_MESSAGE
                             );
 
@@ -416,7 +401,7 @@ public class GraphPanel extends JPanel {
                         // Remove conexão entre selectedNode e clickedNode
                         if (clickedNode != selectedNode) {
                             boolean removed = removeConnectionBetween(selectedNode, clickedNode);
-                            String connectionType = graphType == GraphType.DIRECTED ? "arco" : "aresta";
+                            String connectionType = currentGraphType == GraphType.DIRECTED ? "arco" : "aresta";
 
                             if (removed) {
                                 System.out.println(connectionType + " removido entre " + selectedNode.getId() + " e " + clickedNode.getId());
@@ -434,8 +419,8 @@ public class GraphPanel extends JPanel {
 
     public void setToolMode(ToolMode mode) {
         this.currentMode = mode;
-        selectNode(null); // Limpa a seleção ao trocar de ferramenta
-        System.out.println("Modo atual: " + mode); // Log de depuração
+        selectNode(null);
+        System.out.println("Modo atual: " + mode);
     }
 
     private void selectNode(Vertex node) {
@@ -458,9 +443,8 @@ public class GraphPanel extends JPanel {
         return null;
     }
 
-    // AGM --------------------------------------------------------------------------------
     public List<Connection> applyPrimAlgorithm() {
-        if (graphType == GraphType.DIRECTED) {
+        if (currentGraphType == GraphType.DIRECTED) {
             JOptionPane.showMessageDialog(
                     this,
                     "O algoritmo de Prim só pode ser aplicado em grafos não dirigidos!",
@@ -500,7 +484,6 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Solicita ao usuário o vértice inicial
         String[] vertexIds = vertexList.stream()
                 .map(Vertex::getId)
                 .toArray(String[]::new);
@@ -516,7 +499,7 @@ public class GraphPanel extends JPanel {
         );
 
         if (startVertexId == null) {
-            return null; // Usuário cancelou
+            return null;
         }
 
         Vertex startVertex = vertexList.stream()
@@ -534,16 +517,13 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Executa o algoritmo de Prim
         Prim.PrimResult result = Prim.findMinimumSpanningTree(vertexList, connectionList, startVertex);
 
         if (result != null) {
-            // Armazena os resultados para visualização
             mstEdges = result.getMstEdges();
             mstTotalWeight = result.getTotalWeight();
             showMST = true;
 
-            // Mostra resultado detalhado
             String edgesList = mstEdges.stream()
                     .map(c -> String.format("%s (%.2f)", c.getId(), c.getWeight()))
                     .reduce((a, b) -> a + ", " + b)
@@ -595,9 +575,7 @@ public class GraphPanel extends JPanel {
         return new ArrayList<>(mstEdges);
     }
 
-    // FIM AGM ----------------------------------------------------------------------------
 
-    // BFS --------------------------------------------------------------------------------
     public List<Connection> applyBreadthFirstSearch() {
         if (vertexList.isEmpty()) {
             JOptionPane.showMessageDialog(
@@ -643,7 +621,6 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Executa a busca em largura
         BreadthFirstSearch.BFSResult result = BreadthFirstSearch.performBFS(vertexList, connectionList, startVertex);
 
         if (result != null) {
@@ -713,13 +690,80 @@ public class GraphPanel extends JPanel {
         return showBFS;
     }
 
+    public void clearComponents() {
+        showComponents = false;
+        componentMap.clear();
+        numberOfComponents = 0;
+        repaint();
+    }
+
+    public boolean isComponentsVisible() {
+        return showComponents;
+    }
+
+    public void applyComponentAnalysis() {
+        if (vertexList.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "O grafo está vazio.", "Erro", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        List<List<Vertex>> components;
+        String analysisTitle;
+        String analysisDescription;
+
+        // --- Decisão do Algoritmo ---
+        if (currentGraphType == GraphType.UNDIRECTED) {
+            analysisTitle = "Componentes Conexos (CC)";
+            analysisDescription = String.format("Análise de Componentes Conexos (Grafo Não Direcionado) concluída.\n");
+            components = BreadthFirstSearch.findConnectedComponents(vertexList, connectionList);
+        } else {
+            analysisTitle = "Componentes Fortemente Conexos (SCC)";
+            analysisDescription = String.format("Análise de Componentes Fortemente Conexos (Grafo Direcionado) concluída.\n");
+            components = KosarajuSCC.findSCCs(vertexList, connectionList);
+        }
+
+        // Processar os resultados para visualização (mesma lógica da resposta anterior)
+        componentMap.clear();
+        numberOfComponents = components.size();
+        int componentId = 0;
+        for (List<Vertex> component : components) {
+            for (Vertex vertex : component) {
+                componentMap.put(vertex, componentId);
+            }
+            componentId++;
+        }
+
+        showComponents = true;
+
+        // Preparar a mensagem de resultado para o JOptionPane
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append(analysisDescription);
+        messageBuilder.append(String.format("Número de componentes encontrados: %d\n\n", numberOfComponents));
+
+        for (int i = 0; i < components.size(); i++) {
+            messageBuilder.append(String.format("Componente %d: { ", i + 1));
+            String componentVertices = components.get(i).stream()
+                    .map(Vertex::getId)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+            messageBuilder.append(componentVertices).append(" }\n");
+        }
+        messageBuilder.append("\nOs componentes serão destacados por cores diferentes no grafo.");
+
+        JOptionPane.showMessageDialog(
+                this,
+                messageBuilder.toString(),
+                analysisTitle,
+                JOptionPane.INFORMATION_MESSAGE
+        );
+
+        repaint();
+    }
     public List<Connection> getBFSTreeEdges() {
         return new ArrayList<>(bfsTreeEdges);
     }
 
-    // FIM BFS ----------------------------------------------------------------------------
 
-    // DFS--------------------------------------------------------------------------------
     public List<Connection> applyDepthFirstSearch() {
         if (vertexList.isEmpty()) {
             JOptionPane.showMessageDialog(
@@ -731,7 +775,6 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Solicita ao usuário o vértice inicial
         String[] vertexIds = vertexList.stream()
                 .map(Vertex::getId)
                 .toArray(String[]::new);
@@ -765,11 +808,9 @@ public class GraphPanel extends JPanel {
             return null;
         }
 
-        // Executa a busca em profundidade
         DepthFirstSearch.DFSResult result = DepthFirstSearch.performDFS(vertexList, connectionList, startVertex);
 
         if (result != null) {
-            // Armazena os resultados para visualização
             dfsTreeEdges = result.getTreeEdges();
             dfsVisitOrder = result.getVisitOrder();
             dfsStartVertex = result.getStartVertex();
@@ -777,7 +818,6 @@ public class GraphPanel extends JPanel {
             dfsFinishTimes = result.getFinishTimes();
             showDFS = true;
 
-            // Mostra resultado detalhado
             String visitOrderText = dfsVisitOrder.stream()
                     .map(v -> v.getId() + "(d:" + dfsDiscoveryTimes.get(v) + ",f:" + dfsFinishTimes.get(v) + ")")
                     .reduce((a, b) -> a + " → " + b)
@@ -841,14 +881,12 @@ public class GraphPanel extends JPanel {
         return new ArrayList<>(dfsTreeEdges);
     }
 
-    // FIM DFS ---------------------------------------------------------------------------
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Desenha as conexões primeiro (para ficarem atrás dos vértices)
         for (Connection connection : connectionList) {
             boolean isMSTEdge = showMST && mstEdges.contains(connection);
             boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
@@ -865,9 +903,11 @@ public class GraphPanel extends JPanel {
             }
         }
 
-        // Desenha os vértices
         for (Vertex vertex : vertexList) {
-            if (showBFS && bfsVisitOrder.contains(vertex)) {
+            if (showComponents && componentMap.containsKey(vertex)) {
+                // --- NOVO BLOCO DE RENDERIZAÇÃO ---
+                drawComponentVertex(g2d, vertex);
+            } else if (showBFS && bfsVisitOrder.contains(vertex)) {
                 drawBFSVertex(g2d, vertex);
             } else if (showDFS && dfsVisitOrder.contains(vertex)) {
                 drawDFSVertex(g2d, vertex);
@@ -876,45 +916,85 @@ public class GraphPanel extends JPanel {
             }
         }
 
-        drawGraphTypeInfo(g2d);
 
-        // Desenha informações da AGM se estiver visível
+
         if (showMST && !mstEdges.isEmpty()) {
             drawMSTInfo(g2d);
         }
 
-        // Desenha informações da BFS se estiver visível
         if (showBFS && !bfsTreeEdges.isEmpty()) {
             drawBFSInfo(g2d);
         }
 
-        // Desenha informações da DFS se estiver visível
         if (showDFS && !dfsTreeEdges.isEmpty()) {
             drawDFSInfo(g2d);
         }
+
+        if (showComponents) {
+            drawComponentsInfo(g2d);
+        }
+
     }
 
+    // Em GraphPanel.java
 
+    // Array de cores para diferenciar os componentes
+    private static final Color[] COMPONENT_COLORS = {
+            new Color(255, 100, 100), new Color(100, 200, 100), new Color(100, 100, 255),
+            new Color(255, 180, 0), new Color(0, 200, 200), new Color(200, 0, 200),
+            new Color(180, 180, 0), new Color(120, 120, 120)
+    };
 
-    // Funções de draw ------------------------------------------------------------------------
+    /**
+     * Desenha o vértice e destaca sua cor com base no ID do componente.
+     */
+    private void drawComponentVertex(Graphics2D g2d, Vertex vertex) {
+        // Pega a cor baseada no ID do componente
+        int componentId = componentMap.getOrDefault(vertex, 0);
+        Color color = COMPONENT_COLORS[componentId % COMPONENT_COLORS.length];
 
-    private void drawGraphTypeInfo(Graphics2D g2d) {
-        g2d.setColor(Color.GRAY);
-        g2d.setFont(new Font("Arial", Font.PLAIN, 12));
-        String typeText = graphType == GraphType.DIRECTED ? "Dirigido" : "Não Dirigido";
-        g2d.drawString("Tipo: " + typeText, 10, 20);
+        // Passa a cor de destaque para o método draw do vértice (assumindo que Vertex.draw foi modificado para aceitar cor)
+        // Se Vertex.draw não aceita cor, você teria que desenhar o vértice aqui manualmente.
+        // Exemplo de modificação sugerida para Vertex.draw(g, highlightColor):
+        // vertex.draw(g, color);
+
+        // Se Vertex.draw() não puder ser modificado, faça um override simples aqui:
+        // 1. Chame o desenho padrão:
+        vertex.draw(g2d);
+        // 2. Adicione um contorno colorido extra:
+        Stroke originalStroke = g2d.getStroke();
+        g2d.setColor(color.darker());
+        g2d.setStroke(new BasicStroke(3));
+        g2d.drawOval(vertex.getX() - Vertex.NODE_RADIUS - 3, vertex.getY() - Vertex.NODE_RADIUS - 3,
+                (Vertex.NODE_RADIUS + 3) * 2, (Vertex.NODE_RADIUS + 3) * 2);
+        g2d.setStroke(originalStroke);
+    }
+
+    /**
+     * Desenha informações sobre a contagem de componentes na tela.
+     */
+    private void drawComponentsInfo(Graphics2D g2d) {
+        g2d.setColor(Color.BLACK);
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        String info = String.format("Componentes encontrados: %d", numberOfComponents);
+        g2d.drawString(info, 10, getHeight() - 70); // Ajuste a posição Y conforme necessário
+    }
+
+    public void clearAllAlgorithmVisualizations() {
+        clearBFS();
+        clearComponents();
+        clearMST();
+        clearDFS();
+        // Repaint é chamado dentro de cada clear individual, ou chame aqui uma vez.
     }
 
     private void drawMSTConnection(Graphics2D g2d, Connection connection) {
-        // Salva o estado original
         Color originalColor = g2d.getColor();
         Stroke originalStroke = g2d.getStroke();
 
-        // Define estilo para arestas da AGM
-        g2d.setColor(new Color(0, 150, 0)); // Verde escuro
-        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+        g2d.setColor(new Color(0, 150, 0));
+        g2d.setStroke(new BasicStroke(4));
 
-        // Desenha a linha da conexão
         g2d.drawLine(
                 connection.getSource().getX(),
                 connection.getSource().getY(),
@@ -922,10 +1002,8 @@ public class GraphPanel extends JPanel {
                 connection.getTarget().getY()
         );
 
-        // Desenha o peso e ID com destaque
         drawMSTWeightAndId(g2d, connection);
 
-        // Restaura o estado original
         g2d.setColor(originalColor);
         g2d.setStroke(originalStroke);
     }
@@ -944,17 +1022,14 @@ public class GraphPanel extends JPanel {
         int paddingX = 6;
         int paddingY = 4;
 
-        // Fundo verde claro para destacar
         g2d.setColor(new Color(200, 255, 200));
         g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Borda verde escura
         g2d.setColor(new Color(0, 150, 0));
         g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Texto em verde escuro
         g2d.setColor(new Color(0, 100, 0));
         g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
     }
@@ -969,15 +1044,12 @@ public class GraphPanel extends JPanel {
     }
 
     private void drawBFSConnection(Graphics2D g2d, Connection connection) {
-        // Salva o estado original
         Color originalColor = g2d.getColor();
         Stroke originalStroke = g2d.getStroke();
 
-        // Define estilo para arestas da árvore BFS
-        g2d.setColor(new Color(0, 100, 200)); // Azul
-        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+        g2d.setColor(new Color(0, 100, 200));
+        g2d.setStroke(new BasicStroke(4));
 
-        // Desenha a linha da conexão
         g2d.drawLine(
                 connection.getSource().getX(),
                 connection.getSource().getY(),
@@ -985,10 +1057,8 @@ public class GraphPanel extends JPanel {
                 connection.getTarget().getY()
         );
 
-        // Desenha o peso e ID com destaque azul
         drawBFSWeightAndId(g2d, connection);
 
-        // Restaura o estado original
         g2d.setColor(originalColor);
         g2d.setStroke(originalStroke);
     }
@@ -1007,30 +1077,24 @@ public class GraphPanel extends JPanel {
         int paddingX = 6;
         int paddingY = 4;
 
-        // Fundo azul claro para destacar
         g2d.setColor(new Color(200, 220, 255));
         g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Borda azul escura
         g2d.setColor(new Color(0, 100, 200));
         g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Texto em azul escuro
         g2d.setColor(new Color(0, 80, 160));
         g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
     }
 
     private void drawBFSVertex(Graphics2D g2d, Vertex vertex) {
-        // Desenha o vértice normal primeiro
         vertex.draw(g2d);
 
-        // Adiciona informações da BFS
         if (bfsDistances.containsKey(vertex)) {
             int distance = bfsDistances.get(vertex);
 
-            // Posição para o texto da distância
             int x = vertex.getX();
             int y = vertex.getY() - 35; // Acima do vértice
 
@@ -1039,19 +1103,15 @@ public class GraphPanel extends JPanel {
             String distText = "d:" + distance;
             int textWidth = fm.stringWidth(distText);
 
-            // Fundo para melhor legibilidade
             g2d.setColor(new Color(200, 220, 255, 200));
             g2d.fillOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
 
-            // Borda
             g2d.setColor(new Color(0, 100, 200));
             g2d.drawOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
 
-            // Texto da distância
             g2d.setColor(new Color(0, 80, 160));
             g2d.drawString(distText, x - textWidth/2, y + 4);
 
-            // Destaque especial para o vértice inicial
             if (vertex.equals(bfsStartVertex)) {
                 g2d.setStroke(new BasicStroke(3));
                 g2d.setColor(new Color(0, 150, 255));
@@ -1070,15 +1130,12 @@ public class GraphPanel extends JPanel {
     }
 
     private void drawDFSConnection(Graphics2D g2d, Connection connection) {
-        // Salva o estado original
         Color originalColor = g2d.getColor();
         Stroke originalStroke = g2d.getStroke();
 
-        // Define estilo para arestas da árvore DFS
-        g2d.setColor(new Color(128, 0, 128)); // Roxo
-        g2d.setStroke(new BasicStroke(4)); // Mais espesso
+        g2d.setColor(new Color(128, 0, 128));
+        g2d.setStroke(new BasicStroke(4));
 
-        // Desenha a linha da conexão
         g2d.drawLine(
                 connection.getSource().getX(),
                 connection.getSource().getY(),
@@ -1086,10 +1143,8 @@ public class GraphPanel extends JPanel {
                 connection.getTarget().getY()
         );
 
-        // Desenha o peso e ID com destaque roxo
         drawDFSWeightAndId(g2d, connection);
 
-        // Restaura o estado original
         g2d.setColor(originalColor);
         g2d.setStroke(originalStroke);
     }
@@ -1108,52 +1163,42 @@ public class GraphPanel extends JPanel {
         int paddingX = 6;
         int paddingY = 4;
 
-        // Fundo roxo claro para destacar
         g2d.setColor(new Color(230, 200, 255));
         g2d.fillRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Borda roxa escura
         g2d.setColor(new Color(128, 0, 128));
         g2d.drawRect(midX - textWidth/2 - paddingX, midY - textHeight/2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        // Texto em roxo escuro
         g2d.setColor(new Color(100, 0, 100));
         g2d.drawString(combinedText, midX - textWidth/2, midY + textHeight/4);
     }
 
     private void drawDFSVertex(Graphics2D g2d, Vertex vertex) {
-        // Desenha o vértice normal primeiro
         vertex.draw(g2d);
 
-        // Adiciona informações da DFS
         if (dfsDiscoveryTimes.containsKey(vertex)) {
             int discoveryTime = dfsDiscoveryTimes.get(vertex);
             int finishTime = dfsFinishTimes.getOrDefault(vertex, -1);
 
-            // Posição para o texto dos tempos
             int x = vertex.getX();
-            int y = vertex.getY() - 35; // Acima do vértice
+            int y = vertex.getY() - 35;
 
             g2d.setFont(new Font("Arial", Font.BOLD, 11));
             FontMetrics fm = g2d.getFontMetrics();
             String timeText = "d:" + discoveryTime + "/f:" + finishTime;
             int textWidth = fm.stringWidth(timeText);
 
-            // Fundo para melhor legibilidade
             g2d.setColor(new Color(230, 200, 255, 200));
             g2d.fillOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
 
-            // Borda
             g2d.setColor(new Color(128, 0, 128));
             g2d.drawOval(x - textWidth/2 - 3, y - 8, textWidth + 6, 16);
 
-            // Texto dos tempos
             g2d.setColor(new Color(100, 0, 100));
             g2d.drawString(timeText, x - textWidth/2, y + 4);
 
-            // Destaque especial para o vértice inicial
             if (vertex.equals(dfsStartVertex)) {
                 g2d.setStroke(new BasicStroke(3));
                 g2d.setColor(new Color(180, 100, 200));
@@ -1171,27 +1216,22 @@ public class GraphPanel extends JPanel {
         g2d.drawString(dfsInfo, 10, getHeight() - 50);
     }
 
-    // Matrizes -------------------------------------------------------------------------------
-
     public int[][] getAdjacencyMatrix() {
         int n = vertexList.size();
         int[][] matrix = new int[n][n];
 
-        // Cria um mapa de vértice para índice
         java.util.Map<Vertex, Integer> vertexIndex = new java.util.HashMap<>();
         for (int i = 0; i < n; i++) {
             vertexIndex.put(vertexList.get(i), i);
         }
 
-        // Preenche a matriz
         for (Connection connection : connectionList) {
             int sourceIndex = vertexIndex.get(connection.getSource());
             int targetIndex = vertexIndex.get(connection.getTarget());
 
             matrix[sourceIndex][targetIndex] = 1;
 
-            // Se for não dirigido, marca também a posição simétrica
-            if (graphType == GraphType.UNDIRECTED) {
+            if (currentGraphType == GraphType.UNDIRECTED) {
                 matrix[targetIndex][sourceIndex] = 1;
             }
         }
@@ -1204,24 +1244,20 @@ public class GraphPanel extends JPanel {
         int m = connectionList.size();
         int[][] matrix = new int[n][m];
 
-        // Cria um mapa de vértice para índice
         java.util.Map<Vertex, Integer> vertexIndex = new java.util.HashMap<>();
         for (int i = 0; i < n; i++) {
             vertexIndex.put(vertexList.get(i), i);
         }
 
-        // Preenche a matriz
         for (int j = 0; j < m; j++) {
             Connection connection = connectionList.get(j);
             int sourceIndex = vertexIndex.get(connection.getSource());
             int targetIndex = vertexIndex.get(connection.getTarget());
 
-            if (graphType == GraphType.DIRECTED) {
-                // Para grafos dirigidos: +1 para saída, -1 para entrada
+            if (currentGraphType == GraphType.DIRECTED) {
                 matrix[sourceIndex][j] = 1;
                 matrix[targetIndex][j] = -1;
             } else {
-                // Para grafos não dirigidos: 1 para ambas as extremidades
                 matrix[sourceIndex][j] = 1;
                 matrix[targetIndex][j] = 1;
             }
@@ -1230,29 +1266,36 @@ public class GraphPanel extends JPanel {
         return matrix;
     }
 
-    // Getters para acesso às listas -------------------------------
 
     public List<Vertex> getVertexList() { return new ArrayList<>(vertexList); }
     public List<Connection> getConnectionList() { return new ArrayList<>(connectionList); }
-    public GraphType getGraphType() { return graphType; }
+    public GraphType getGraphType() { return currentGraphType; }
 
     public void setGraphType(GraphType graphType) {
-        this.graphType = graphType;
-        // Converte conexões existentes se necessário
+        currentGraphType = graphType;
         convertExistingConnections();
+        clearBFS();
+        clearComponents();
+        clearMST();
+        clearDFS();
         repaint();
+    }
+
+    public String getGraphTypeDescription(){
+        if(currentGraphType == GraphType.UNDIRECTED){
+            return "não-dirigido";
+        }
+        return "dirigido";
     }
 
     private void convertExistingConnections() {
         List<Connection> oldConnections = new ArrayList<>(connectionList);
         connectionList.clear();
 
-        // Limpa listas de adjacência
         for (Vertex vertex : vertexList) {
             vertex.getNeighbours().clear();
         }
 
-        // Recria as conexões com o novo tipo
         for (Connection oldConnection : oldConnections) {
             addConnection(
                     oldConnection.getId(),

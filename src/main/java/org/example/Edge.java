@@ -2,7 +2,7 @@ package org.example;
 
 import java.awt.*;
 
-class Edge extends Connection {
+public class Edge extends Connection {
 
     public Edge(String id, Vertex source, Vertex target, double weight) {
         super(id, source, target, weight);
@@ -15,7 +15,6 @@ class Edge extends Connection {
 
     @Override
     public boolean connects(Vertex v1, Vertex v2) {
-        // Para arestas, a ordem não importa (não dirigido)
         return (source.equals(v1) && target.equals(v2)) || (source.equals(v2) && target.equals(v1));
     }
 

@@ -4,7 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Interface extends JFrame {
-    private static final int W = 800, H = 600;
+    private static final int W = 900, H = 600;
     private Toolbar toolbar;
     private GraphPanel graphPanel;
 

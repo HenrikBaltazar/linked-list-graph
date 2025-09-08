@@ -10,7 +10,7 @@ public class Vertex {
 
     private int x,y;
     private boolean selected = false;
-    private static final int NODE_RADIUS = 25; // Raio visual do nó
+    public static final int NODE_RADIUS = 25;
 
     public Vertex(String id, int x, int y) {
         this.id = id;
