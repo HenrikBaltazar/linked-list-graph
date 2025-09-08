@@ -348,7 +348,6 @@ public class Toolbar extends JToolBar {
     private void conexoButtonAction() {
         GraphPanel graphPanel = ui.getGraphPanel();
         graphPanel.clearAllAlgorithmVisualizations();
-        // Renomeie 'isConexoVisible()' para 'isComponentsVisible()' no GraphPanel para consistência.
         if (graphPanel.isComponentsVisible()) {
             int option = JOptionPane.showConfirmDialog(
                     this,
@@ -361,12 +360,11 @@ public class Toolbar extends JToolBar {
             if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
                 return;
             } else if (option == JOptionPane.NO_OPTION) {
-                graphPanel.clearComponents(); // Chama o método de limpeza correto
+                graphPanel.clearComponents();
                 return;
             }
         }
 
-        // Limpa outras visualizações de algoritmos para evitar sobreposição
         if (graphPanel.isMSTVisible()) {
             graphPanel.clearMST();
         }
@@ -377,7 +375,6 @@ public class Toolbar extends JToolBar {
             graphPanel.clearDFS();
         }
 
-        // Correção: Chamar o método de análise de componentes em vez de DFS
         graphPanel.applyComponentAnalysis();
     }
 

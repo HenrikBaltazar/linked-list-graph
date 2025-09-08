@@ -129,10 +129,8 @@ public class BreadthFirstSearch {
         if (connection.getSource().equals(vertex)) {
             return connection.getTarget();
         } else if (connection.getTarget().equals(vertex) && !connection.isDirected()) {
-            // Para grafos não dirigidos, pode ir em ambas as direções
             return connection.getSource();
         } else if (connection.getTarget().equals(vertex) && connection.isDirected()) {
-            // Para grafos dirigidos, só pode seguir se for o target de uma aresta que chega
             return null;
         }
         return null;
