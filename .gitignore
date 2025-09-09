@@ -29,7 +29,7 @@ dist-ssr
 ##############################
 .mtj.tmp/
 *.class
-*.jar
+#*.jar
 *.war
 *.ear
 *.nar
