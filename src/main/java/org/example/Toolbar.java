@@ -23,7 +23,7 @@ public class Toolbar extends JToolBar {
     private static final String ICON_INCMATRIX = "/i.png";
     private static final String ICON_CHECK_ADJACENCY = "/adjacent.png";
     private static final String ICON_PRIM = "/prim.png";
-    private static final Font FONT_BUTTON = new Font("Monospaced", Font.BOLD,28);
+    private Font FONT_BUTTON;
 
     private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
     private final JButton adjMatrixButton, incMatrixButton, checkAdjacencyButton, primButton, bfsButton, dfsButton, conexoButton;
@@ -31,7 +31,7 @@ public class Toolbar extends JToolBar {
 
     public Toolbar(Interface ui) {
         this.ui = ui;
-
+        FONT_BUTTON = new Font("Monospaced", Font.BOLD,ui.screenSize/2);
         setVisible(true);
         setBackground(new Color(159, 197, 232));
 
@@ -431,7 +431,7 @@ public class Toolbar extends JToolBar {
                 System.err.println("Erro: Não foi possível encontrar o recurso: " + path);
                 return null;
             }
-            return new ImageIcon(ImageIO.read(stream));
+            return new ImageIcon(ImageIO.read(stream).getScaledInstance(ui.screenSize, ui.screenSize, Image.SCALE_SMOOTH));
         } catch (Exception e) {
             System.err.println("Erro ao carregar imagem " + path + ": " + e.getMessage());
             return null;
