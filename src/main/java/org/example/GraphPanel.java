@@ -53,13 +53,33 @@ public class GraphPanel extends JPanel {
             }
         };
         addMouseListener(mouseListener);
-
-        // addVertex(100, 100);
     }
 
     public void addVertex(int x, int y) {
-        String id = String.valueOf(nextVertexIdCounter++);
-        Vertex newVertex = new Vertex(id, x, y);
+        boolean validName=true;
+        String vertexName = "";
+        do {
+            validName=true;
+            vertexName = JOptionPane.showInputDialog(
+                    this,
+                    "Digite o nome do vértice até 10 caracteres:",
+                    "Nomear novo vértice",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            if (vertexName.length()>10){
+                JOptionPane.showMessageDialog(this, "Nome do vértice deve possuir até 10 caracteres", "Nome Inválido", JOptionPane.ERROR_MESSAGE);
+                validName = false;
+            }else{
+            for (Vertex v : vertexList) {
+                if(v.getId().equals(vertexName)) {
+                    JOptionPane.showMessageDialog(this, "Já existe um vértice chamado: "+vertexName+"\nPor favor escolha outro nome.", "Vértice já existe", JOptionPane.ERROR_MESSAGE);
+                    validName = false;
+                }
+            }
+            }
+        }while (!validName);
+
+        Vertex newVertex = new Vertex(vertexName, x, y);
         this.vertexList.add(newVertex);
     }
 

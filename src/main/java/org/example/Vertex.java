@@ -53,15 +53,26 @@ public class Vertex {
         } else {
             g2d.setColor(Color.BLUE);
         }
-        g2d.fillOval(x - NODE_RADIUS, y - NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2);
-
+        if (id != null && id.length() > 1) {
+            g2d.fillRoundRect(
+                    x - NODE_RADIUS,
+                    y - NODE_RADIUS,
+                    NODE_RADIUS+id.length()*10,
+                    NODE_RADIUS*2,
+                    15,
+                    15
+            );
+        } else {
+            g2d.fillOval(x - NODE_RADIUS, y - NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2);
+        }
         g2d.setColor(Color.WHITE);
-        String label = getId();
-        if (label == null) label = "?";
-        if(label.length() > 9){
-            g2d.drawString(label, x - 8, y + 5);
+        if (id == null) id = "?";
+        if(id.length() > 1 && id.length()<3){
+            g2d.drawString(id, x - 15, y + 5);
+        }else if(id.length() >= 3){
+            g2d.drawString(id, x - 20, y + 5);
         }else {
-            g2d.drawString(label, x - 4, y + 5);
+            g2d.drawString(id, x - 4, y + 5);
         }
     }
 
