@@ -1,4 +1,4 @@
-package org.example;
+package org.example.graph;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -10,13 +10,21 @@ public class Vertex {
 
     private int x,y;
     private boolean selected = false;
-    public static final int NODE_RADIUS = 25;
+    public int radiusw = 25, radiush=25;
 
     public Vertex(String id, int x, int y) {
         this.id = id;
         this.x = x;
         this.y = y;
         this.neighbours = new ArrayList<>();
+    }
+
+    public int getRadiusw(){
+        return radiusw;
+    }
+
+    public void setRadiusw(int radiusw){
+        this.radiusw = radiusw;
     }
 
     public String getId() { return id; }
@@ -40,7 +48,7 @@ public class Vertex {
     public void setSelected(boolean selected) { this.selected = selected; }
 
     public boolean contains(Point p) {
-        int radiusSquared = NODE_RADIUS * NODE_RADIUS;
+        int radiusSquared = radiusw * radiusw;
         int distanceSquared = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
         return distanceSquared <= radiusSquared;
     }
@@ -54,16 +62,18 @@ public class Vertex {
             g2d.setColor(Color.BLUE);
         }
         if (id != null && id.length() > 1) {
+            radiusw =radiusw +id.length()*10;
+            radiush*=2;
             g2d.fillRoundRect(
-                    x - NODE_RADIUS,
-                    y - NODE_RADIUS,
-                    NODE_RADIUS+id.length()*10,
-                    NODE_RADIUS*2,
+                    x - radiusw,
+                    y - radiusw,
+                    radiusw,
+                    radiush,
                     15,
                     15
             );
         } else {
-            g2d.fillOval(x - NODE_RADIUS, y - NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2);
+            g2d.fillOval(x - radiusw, y - radiusw, radiusw * 2, radiush * 2);
         }
         g2d.setColor(Color.WHITE);
         if (id == null) id = "?";

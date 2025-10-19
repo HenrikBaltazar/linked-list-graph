@@ -1,9 +1,9 @@
 package org.example.algorithms;
 
-import org.example.Arc;
-import org.example.Connection;
-import org.example.Edge;
-import org.example.Vertex;
+import org.example.graph.Arc;
+import org.example.graph.Connection;
+import org.example.graph.Edge;
+import org.example.graph.Vertex;
 import java.util.*;
 
 public class KosarajuSCC {

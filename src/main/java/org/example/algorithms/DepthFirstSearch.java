@@ -1,7 +1,9 @@
 
 package org.example.algorithms;
 
-import org.example.*;
+import org.example.graph.Connection;
+import org.example.graph.Vertex;
+
 import java.util.*;
 
 public class DepthFirstSearch {

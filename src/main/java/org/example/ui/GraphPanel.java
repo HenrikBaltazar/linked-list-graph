@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.example.algorithms.*;
+import org.example.graph.Arc;
+import org.example.graph.Connection;
+import org.example.graph.Edge;
+import org.example.graph.Vertex;
 
 public class GraphPanel extends JPanel {
 
@@ -960,8 +964,8 @@ public class GraphPanel extends JPanel {
         Stroke originalStroke = g2d.getStroke();
         g2d.setColor(color.darker());
         g2d.setStroke(new BasicStroke(3));
-        g2d.drawOval(vertex.getX() - Vertex.NODE_RADIUS - 3, vertex.getY() - Vertex.NODE_RADIUS - 3,
-                (Vertex.NODE_RADIUS + 3) * 2, (Vertex.NODE_RADIUS + 3) * 2);
+        g2d.drawOval(vertex.getX() - vertex.getRadiusw() - 3, vertex.getY() - vertex.getRadiusw() - 3,
+                (vertex.getRadiusw() + 3) * 2, (vertex.getRadiusw() + 3) * 2);
         g2d.setStroke(originalStroke);
     }
 
@@ -1295,6 +1299,26 @@ public class GraphPanel extends JPanel {
                     oldConnection.getWeight()
             );
         }
+    }
+
+    public void clearGraph() {
+
+        for (Vertex vertex : vertexList) {
+            vertex.getNeighbours().clear();
+        }
+
+        this.vertexList.clear();
+        this.connectionList.clear();
+
+        this.selectedNode = null;
+        this.nextVertexIdCounter = 1;
+        this.nextConnectionIdCounter = 1;
+
+        clearAllAlgorithmVisualizations();
+
+        repaint();
+
+        System.out.println("O grafo foi completamente limpo e resetado.");
     }
 
 }
