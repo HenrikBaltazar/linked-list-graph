@@ -75,6 +75,7 @@ public class MenuBar extends JMenuBar {
     private void aStar(){
         GraphPanel graphPanel = ui.getGraphPanel();
         graphPanel.clearAllAlgorithmVisualizations();
+        graphPanel.applyAStarAlgorithm();
     }
 
     private void welshPowell() {

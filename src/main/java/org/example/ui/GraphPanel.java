@@ -4,10 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 import org.example.algorithms.*;
 import org.example.graph.Arc;
@@ -53,6 +51,10 @@ public class GraphPanel extends JPanel {
     private Map<Vertex, Color> vertexColors = new HashMap<>();
     private int chromaticNumber = 0;
 
+    private boolean showAStarPath = false;
+    private List<Connection> aStarPathConnections = new ArrayList<>();
+    private double aStarPathTotalWeight = 0.0;
+
     public GraphPanel() {
         MouseAdapter mouseListener = new MouseAdapter() {
             @Override
@@ -77,7 +79,7 @@ public class GraphPanel extends JPanel {
             if(vertexName==null) {
                 validName=false;
                 break;
-            }else if (vertexName.length()>10){
+            }else if (vertexName.length()>10 || vertexName.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Nome do vértice deve possuir até 10 caracteres", "Nome Inválido", JOptionPane.ERROR_MESSAGE);
                 validName = false;
             }else{
@@ -927,8 +929,11 @@ public class GraphPanel extends JPanel {
             boolean isMSTEdge = showMST && mstEdges.contains(connection);
             boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
             boolean isDFSEdge = showDFS && dfsTreeEdges.contains(connection);
+            boolean isAStarEdge = showAStarPath && aStarPathConnections.contains(connection); // NOVO
 
-            if (isMSTEdge) {
+            if (isAStarEdge) { // Dê prioridade ao A* se ele estiver ativo
+                drawAStarConnection(g2d, connection);
+            }else if (isMSTEdge) {
                 drawMSTConnection(g2d, connection);
             } else if (isBFSEdge) {
                 drawBFSConnection(g2d, connection);
@@ -975,6 +980,66 @@ public class GraphPanel extends JPanel {
             drawComponentsInfo(g2d);
         }
 
+        if (showAStarPath) { // NOVO
+            drawAStarInfo(g2d);
+        }
+
+    }
+
+    private void drawAStarConnection(Graphics2D g2d, Connection connection) {
+        Stroke originalStroke = g2d.getStroke();
+        Color originalColor = g2d.getColor();
+
+        g2d.setColor(new Color(255, 140, 0)); // Laranja vivo
+        g2d.setStroke(new BasicStroke(4.5f));
+
+        // CORREÇÃO: Desenha a linha diretamente aqui
+        g2d.drawLine(
+                connection.getSource().getX(),
+                connection.getSource().getY(),
+                connection.getTarget().getX(),
+                connection.getTarget().getY()
+        );
+
+        // Adiciona o rótulo para consistência visual
+        drawAStarWeightAndId(g2d, connection);
+
+        g2d.setStroke(originalStroke);
+        g2d.setColor(originalColor);
+    }
+
+    // NOVO MÉTODO AUXILIAR para desenhar o peso e ID da conexão A*
+    private void drawAStarWeightAndId(Graphics2D g2d, Connection connection) {
+        int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
+        int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
+
+        g2d.setFont(new Font("Arial", Font.BOLD, 15));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        String combinedText = connection.getId() + "(" + String.format("%.1f", connection.getWeight()) + ")";
+        int textWidth = fm.stringWidth(combinedText);
+        int textHeight = fm.getHeight();
+
+        int paddingX = 6;
+        int paddingY = 4;
+
+        g2d.setColor(new Color(255, 230, 200)); // Fundo laranja claro
+        g2d.fillRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        g2d.setColor(new Color(255, 140, 0)); // Borda laranja
+        g2d.drawRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        g2d.setColor(new Color(180, 80, 0)); // Texto laranja escuro
+        g2d.drawString(combinedText, midX - textWidth / 2, midY + textHeight / 4);
+    }
+
+    private void drawAStarInfo(Graphics2D g2d) {
+        g2d.setColor(new Color(200, 100, 0));
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        String info = String.format("A* Path Cost: %.2f", aStarPathTotalWeight);
+        g2d.drawString(info, 10, getHeight() - 110);
     }
 
     private void drawColoredVertex(Graphics2D g2d, Vertex vertex) {
@@ -1053,6 +1118,7 @@ public class GraphPanel extends JPanel {
         clearMST();
         clearDFS();
         clearColoring();
+        clearAStarPath();
     }
 
     private void drawMSTConnection(Graphics2D g2d, Connection connection) {
@@ -1525,6 +1591,155 @@ public class GraphPanel extends JPanel {
 
         // Se chegamos até aqui, nenhum ciclo de 3 foi encontrado.
         return false;
+    }
+
+    public void applyAStarAlgorithm() {
+        if (vertexList.size() < 2) {
+            JOptionPane.showMessageDialog(this, "O grafo precisa de pelo menos dois vértices para o A*.", "Erro - A*", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // --- 1. Obter Vértice Inicial e Final do Usuário ---
+        String[] vertexIds = vertexList.stream().map(Vertex::getId).toArray(String[]::new);
+
+        String startVertexId = (String) JOptionPane.showInputDialog(
+                this, "Selecione o vértice INICIAL:", "Algoritmo A* - Ponto de Partida",
+                JOptionPane.QUESTION_MESSAGE, null, vertexIds, vertexIds[0]);
+        if (startVertexId == null) return;
+
+        String endVertexId = (String) JOptionPane.showInputDialog(
+                this, "Selecione o vértice FINAL:", "Algoritmo A* - Ponto de Chegada",
+                JOptionPane.QUESTION_MESSAGE, null, vertexIds, vertexIds.length > 1 ? vertexIds[1] : vertexIds[0]);
+        if (endVertexId == null) return;
+
+        if (startVertexId.equals(endVertexId)) {
+            JOptionPane.showMessageDialog(this, "O vértice inicial e final devem ser diferentes.", "Erro - A*", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Vertex startNode = vertexList.stream().filter(v -> v.getId().equals(startVertexId)).findFirst().orElse(null);
+        Vertex endNode = vertexList.stream().filter(v -> v.getId().equals(endVertexId)).findFirst().orElse(null);
+
+        // --- 2. Inicialização do A* ---
+        // openSet contém os nós a serem avaliados, priorizados pelo menor fScore
+        Map<Vertex, Double> fScore = new HashMap<>();
+        PriorityQueue<Vertex> openSet = new PriorityQueue<>(Comparator.comparingDouble(fScore::get));
+
+        // cameFrom armazena o nó anterior no caminho mais curto
+        Map<Vertex, Vertex> cameFrom = new HashMap<>();
+
+        // gScore é o custo do início até o nó atual
+        Map<Vertex, Double> gScore = new HashMap<>();
+        for (Vertex v : vertexList) {
+            gScore.put(v, Double.POSITIVE_INFINITY);
+            fScore.put(v, Double.POSITIVE_INFINITY);
+        }
+        gScore.put(startNode, 0.0);
+        fScore.put(startNode, heuristic(startNode, endNode));
+        openSet.add(startNode);
+
+        // --- 3. Loop Principal do Algoritmo ---
+        while (!openSet.isEmpty()) {
+            Vertex current = openSet.poll(); // Pega o nó com o menor fScore
+
+            if (current.equals(endNode)) {
+                // Caminho encontrado!
+                reconstructAStarPath(cameFrom, current);
+                showAStarResultDialog(startNode, endNode);
+                return;
+            }
+
+            for (Vertex neighbor : current.getNeighbours()) {
+                Connection connection = findConnectionBetween(current, neighbor);
+                if (connection == null) continue;
+                double weight = connection.getWeight();
+
+                double tentativeGScore = gScore.get(current) + weight;
+
+                if (tentativeGScore < gScore.get(neighbor)) {
+                    // Este é um caminho melhor para o vizinho. Registre-o.
+                    cameFrom.put(neighbor, current);
+                    gScore.put(neighbor, tentativeGScore);
+                    fScore.put(neighbor, gScore.get(neighbor) + heuristic(neighbor, endNode));
+                    if (!openSet.contains(neighbor)) {
+                        openSet.add(neighbor);
+                    }
+                }
+            }
+        }
+
+        // Se o loop terminar, não há caminho
+        JOptionPane.showMessageDialog(this, "Não foi possível encontrar um caminho de " + startVertexId + " para " + endVertexId + ".", "Caminho Não Encontrado", JOptionPane.WARNING_MESSAGE);
+    }
+
+    // Heurística: Distância Euclidiana (linha reta)
+    private double heuristic(Vertex a, Vertex b) {
+        return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2));
+    }
+
+    // Reconstrói o caminho e preenche as variáveis de visualização
+    private void reconstructAStarPath(Map<Vertex, Vertex> cameFrom, Vertex current) {
+        clearAStarPath(); // Limpa resultados anteriores
+        List<Vertex> path = new ArrayList<>();
+        path.add(current);
+        while (cameFrom.containsKey(current)) {
+            current = cameFrom.get(current);
+            path.add(0, current); // Adiciona no início para inverter a ordem
+        }
+
+        // Preenche a lista de conexões e o peso total para desenhar
+        for (int i = 0; i < path.size() - 1; i++) {
+            Vertex u = path.get(i);
+            Vertex v = path.get(i + 1);
+            Connection conn = findConnectionBetween(u, v);
+            if (conn != null) {
+                aStarPathConnections.add(conn);
+                aStarPathTotalWeight += conn.getWeight();
+            }
+        }
+        showAStarPath = true;
+        repaint();
+    }
+
+    // Exibe o diálogo com o resultado
+    private void showAStarResultDialog(Vertex start, Vertex end) {
+        String pathStr;
+        if (aStarPathConnections.isEmpty()) {
+            pathStr = "Caminho direto (vértices adjacentes).";
+            // Adiciona o primeiro vértice se o caminho for apenas uma aresta.
+            if (start != null) {
+                pathStr = start.getId() + " → " + end.getId();
+            }
+        } else {
+            // Constrói a string do caminho corretamente
+            StringBuilder sb = new StringBuilder();
+            // Começa com o ID do primeiro vértice do caminho
+            sb.append(aStarPathConnections.get(0).getSource().getId());
+            // Adiciona o alvo de cada conexão na sequência
+            for (Connection conn : aStarPathConnections) {
+                sb.append(" → ").append(conn.getTarget().getId());
+            }
+            pathStr = sb.toString();
+        }
+
+        String message = String.format(
+                "✓ Caminho mais curto (A*) encontrado de %s para %s!\n\n" +
+                        " • Custo Total do Caminho: %.2f\n" +
+                        " • Número de Arestas: %d\n\n" +
+                        "Sequência:\n%s\n\n" +
+                        "O caminho será destacado em laranja no grafo.",
+                start.getId(), end.getId(), aStarPathTotalWeight, aStarPathConnections.size(),
+                pathStr
+        );
+        JOptionPane.showMessageDialog(this, message, "Algoritmo A* - Resultado", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // Método de limpeza
+    public void clearAStarPath() {
+        showAStarPath = false;
+        aStarPathConnections.clear();
+        aStarPathTotalWeight = 0.0;
+        repaint();
     }
 
 }
