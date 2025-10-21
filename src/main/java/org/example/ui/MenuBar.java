@@ -15,6 +15,7 @@ public class MenuBar extends JMenuBar {
     private final JMenuItem jMenuItemOpen, jMenuItemSave, jMenuItemClear;
     private final JMenuItem jMenuItemAdjMatrix, jMenuItemIncMatrix;
     private final JMenuItem jMenuItemCheckAdjacency, jMenuItemPrim, jMenuItemBfs, jMenuItemDfs, jMenuItemConexo;
+    private final JMenuItem jMenuItemPlanar, jMenuItemWP, jMenuItemAstar;
     public MenuBar(Interface ui) {
         this.ui = ui;
         fileManager = new FileManager();
@@ -32,10 +33,13 @@ public class MenuBar extends JMenuBar {
         jMenuAlg.add(jMenuItemCheckAdjacency = new JMenuItem("Verificar Adjacência"));
         jMenuAlg.add(jMenuItemPrim = new JMenuItem("PRIM (AGM)"));
         jMenuAlg.add(jMenuItemConexo = new JMenuItem("Componentes conexos"));
+        jMenuAlg.add(jMenuItemPlanar = new JMenuItem("Planaridade"));
+        jMenuAlg.add(jMenuItemWP = new JMenuItem("Welsh-Powell"));
         add(jMenuAlg);
         jMenuSearch = new JMenu("Busca");
         jMenuSearch.add(jMenuItemBfs = new JMenuItem("BFS"));
         jMenuSearch.add(jMenuItemDfs = new JMenuItem("DFS"));
+        jMenuSearch.add(jMenuItemAstar = new JMenuItem("A*"));
         add(jMenuSearch);
         setupActionListeners();
     }
@@ -60,6 +64,100 @@ public class MenuBar extends JMenuBar {
         jMenuItemDfs.addActionListener(_ -> dfsButtonAction());
 
         jMenuItemConexo.addActionListener(_ -> conexoButtonAction());
+
+        jMenuItemPlanar.addActionListener(_ -> planaridade());
+
+        jMenuItemWP.addActionListener(_ -> welshPowell());
+
+        jMenuItemAstar.addActionListener(_ -> aStar());
+    }
+
+    private void aStar(){
+        GraphPanel graphPanel = ui.getGraphPanel();
+        graphPanel.clearAllAlgorithmVisualizations();
+    }
+
+    private void welshPowell() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+        graphPanel.clearAllAlgorithmVisualizations();
+        graphPanel.applyWelshPowellColoring();
+    }
+
+    private void planaridade() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+        graphPanel.clearAllAlgorithmVisualizations();
+
+        int v = graphPanel.getVertexList().size();
+        int e = graphPanel.getConnectionList().size();
+
+        // Caso trivial: Grafos com menos de 3 vértices são sempre planares.
+        if (v < 3) {
+            JOptionPane.showMessageDialog(ui,
+                    "O grafo é PLANAR. ✅\n\n(Grafos com menos de 3 vértices são sempre planares).",
+                    "Verificação de Planaridade",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        boolean isPotentiallyPlanar = (e <= 3 * v - 6);
+
+        String message;
+        int messageType;
+
+        if (isPotentiallyPlanar && graphPanel.hasThreeCycle()) {
+            message = String.format(
+                    "O grafo É PLANAR. ✅\n\n" +
+                            "Detalhes da verificação:\n" +
+                            " • Vértices (V): %d\n" +
+                            " • Arestas (E): %d\n" +
+                            " • Condição: E <= 3V - 6\n" +
+                            " • Cálculo: %d <= 3 * %d - 6  =>  %d <= %d\n\n" +
+                            "O grafo possui ciclos de comprimento 3 e a condição inicial foi satisfeita. ",
+                    v, e, e, v, e, (3 * v - 6)
+            );
+            messageType = JOptionPane.INFORMATION_MESSAGE;
+        } else if (isPotentiallyPlanar && !graphPanel.hasThreeCycle()) {
+            isPotentiallyPlanar = (e <= 2 * v - 4);
+            if (isPotentiallyPlanar) {
+                message = String.format(
+                        "O grafo É PLANAR. ✅\n\n" +
+                                "Detalhes da verificação:\n" +
+                                " • Vértices (V): %d\n" +
+                                " • Arestas (E): %d\n" +
+                                " • Condição: E <= 2V - 4\n" +
+                                " • Cálculo: %d <= 2 * %d - 4  =>  %d <= %d\n\n" +
+                                "O grafo NÃO possui ciclos de comprimento 3 mas a segunda condição foi satisfeita. ",
+                        v, e, e, v, e, (3 * v - 6)
+                );
+                messageType = JOptionPane.INFORMATION_MESSAGE;
+            }else {
+                message = String.format(
+                        "O grafo NÃO É PLANAR. ❌\n\n" +
+                                "Detalhes da verificação:\n" +
+                                " • Vértices (V): %d\n" +
+                                " • Arestas (E): %d\n" +
+                                " • Condição violada: E > 2V - 4\n" +
+                                " • Cálculo: %d > 2 * %d - 4  =>  %d > %d\n\n" +
+                                "O grafo possui arestas demais para ser desenhado em um plano sem cruzamentos.",
+                        v, e, e, v, e, (3 * v - 6)
+                );
+                messageType = JOptionPane.WARNING_MESSAGE;
+            }
+        } else {
+            message = String.format(
+                    "O grafo NÃO É PLANAR. ❌\n\n" +
+                            "Detalhes da verificação:\n" +
+                            " • Vértices (V): %d\n" +
+                            " • Arestas (E): %d\n" +
+                            " • Condição violada: E > 3V - 6\n" +
+                            " • Cálculo: %d > 3 * %d - 6  =>  %d > %d\n\n" +
+                            "O grafo possui arestas demais para ser desenhado em um plano sem cruzamentos.",
+                    v, e, e, v, e, (3 * v - 6)
+            );
+            messageType = JOptionPane.WARNING_MESSAGE;
+        }
+
+        JOptionPane.showMessageDialog(ui, message, "Verificação de Planaridade", messageType);
     }
 
     private void clearGraph(){

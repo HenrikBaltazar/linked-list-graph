@@ -16,10 +16,6 @@ public class Toolbar extends JToolBar {
     private static final String ICON_DISCONNECT_SELECTED = "/selected_disconnect.png";
     private static final String ICON_ORIENTATION = "/orientation.png";
     private static final String ICON_ORIENTATION_SELECTED = "/selected_orientation.png";
-    private static final String ICON_ADJMATRIX = "/a.png";
-    private static final String ICON_INCMATRIX = "/i.png";
-    private static final String ICON_CHECK_ADJACENCY = "/adjacent.png";
-    private static final String ICON_PRIM = "/prim.png";
     private Font FONT_BUTTON;
 
     private final JToggleButton addButton, removeButton, connectButton, disconnectButton, orientationButton;
