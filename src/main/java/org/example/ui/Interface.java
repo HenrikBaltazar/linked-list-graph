@@ -4,7 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Interface extends JFrame {
-    private static final int W = 1280, H = 720;
+    private static final int W = 1400, H = 800;
     public int screenSize = getToolkit().getScreenResolution()/2;
     private Toolbar toolbar;
     private GraphPanel graphPanel;

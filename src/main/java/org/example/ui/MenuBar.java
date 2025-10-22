@@ -1,6 +1,7 @@
 package org.example.ui;
 
 import org.example.FileManager;
+import org.example.algorithms.HopcroftTarjan;
 import org.example.graph.Connection;
 import org.example.graph.Vertex;
 
@@ -15,7 +16,7 @@ public class MenuBar extends JMenuBar {
     private final JMenuItem jMenuItemOpen, jMenuItemSave, jMenuItemClear;
     private final JMenuItem jMenuItemAdjMatrix, jMenuItemIncMatrix;
     private final JMenuItem jMenuItemCheckAdjacency, jMenuItemPrim, jMenuItemBfs, jMenuItemDfs, jMenuItemConexo;
-    private final JMenuItem jMenuItemPlanar, jMenuItemWP, jMenuItemAstar;
+    private final JMenuItem jMenuItemPlanarEuler, jMenuItemPlanarTarjan, jMenuItemWP, jMenuItemAstar;
     public MenuBar(Interface ui) {
         this.ui = ui;
         fileManager = new FileManager(ui);
@@ -33,7 +34,8 @@ public class MenuBar extends JMenuBar {
         jMenuAlg.add(jMenuItemCheckAdjacency = new JMenuItem("Verificar Adjacência"));
         jMenuAlg.add(jMenuItemPrim = new JMenuItem("PRIM (AGM)"));
         jMenuAlg.add(jMenuItemConexo = new JMenuItem("Componentes conexos"));
-        jMenuAlg.add(jMenuItemPlanar = new JMenuItem("Planaridade"));
+        jMenuAlg.add(jMenuItemPlanarEuler = new JMenuItem("Planaridade (EULER)"));
+        jMenuAlg.add(jMenuItemPlanarTarjan = new JMenuItem("Planaridade (Hopcroft-Tarjan)"));
         jMenuAlg.add(jMenuItemWP = new JMenuItem("Welsh-Powell"));
         add(jMenuAlg);
         jMenuSearch = new JMenu("Busca");
@@ -65,7 +67,9 @@ public class MenuBar extends JMenuBar {
 
         jMenuItemConexo.addActionListener(_ -> conexoButtonAction());
 
-        jMenuItemPlanar.addActionListener(_ -> planaridade());
+        jMenuItemPlanarEuler.addActionListener(_ -> planarEuler());
+
+        jMenuItemPlanarTarjan.addActionListener(_ -> planarTarjan());
 
         jMenuItemWP.addActionListener(_ -> welshPowell());
 
@@ -75,7 +79,8 @@ public class MenuBar extends JMenuBar {
     public void setUndirectedFeatures(boolean flag){
         jMenuItemWP.setEnabled(flag);
         jMenuItemPrim.setEnabled(flag);
-        jMenuItemPlanar.setEnabled(flag);
+        jMenuItemPlanarEuler.setEnabled(flag);
+        jMenuItemPlanarTarjan.setEnabled(flag);
     }
 
     private void aStar(){
@@ -90,7 +95,32 @@ public class MenuBar extends JMenuBar {
         graphPanel.applyWelshPowellColoring();
     }
 
-    private void planaridade() {
+    private void planarTarjan() {
+        GraphPanel graphPanel = ui.getGraphPanel();
+        graphPanel.clearAllAlgorithmVisualizations();
+
+        List<Vertex> vertices = graphPanel.getVertexList();
+        List<Connection> connections = graphPanel.getConnectionList();
+
+        HopcroftTarjan.PlanarityResult result = HopcroftTarjan.checkPlanarity(vertices, connections);
+
+        String message;
+        int messageType;
+
+        if (result.isPlanar()) {
+            message = String.format("Resultado: É PLANAR ✅\n\n" +
+                                    result.getMessage());
+            messageType = JOptionPane.INFORMATION_MESSAGE;
+        } else {
+            message = String.format("Resultado: NÃO É PLANAR ❌\n\n" +
+                                    result.getMessage());
+            messageType = JOptionPane.INFORMATION_MESSAGE;
+        }
+
+        JOptionPane.showMessageDialog(ui, message, "Planaridade: Hopcroft-Tarjan", messageType);
+    }
+
+    private void planarEuler() {
         GraphPanel graphPanel = ui.getGraphPanel();
         graphPanel.clearAllAlgorithmVisualizations();
 
@@ -112,7 +142,7 @@ public class MenuBar extends JMenuBar {
 
         if (isPotentiallyPlanar && graphPanel.hasThreeCycle()) {
             message = String.format(
-                    "O grafo É PLANAR. ✅\n\n" +
+                    "O grafo PODE SER PLANAR. ✅\n\n" +
                             "Detalhes da verificação:\n" +
                             " • Vértices (V): %d\n" +
                             " • Arestas (E): %d\n" +
@@ -126,7 +156,7 @@ public class MenuBar extends JMenuBar {
             isPotentiallyPlanar = (e <= 2 * v - 4);
             if (isPotentiallyPlanar) {
                 message = String.format(
-                        "O grafo É PLANAR. ✅\n\n" +
+                        "O grafo PODE SER PLANAR. ✅\n\n" +
                                 "Detalhes da verificação:\n" +
                                 " • Vértices (V): %d\n" +
                                 " • Arestas (E): %d\n" +
@@ -162,8 +192,7 @@ public class MenuBar extends JMenuBar {
             );
             messageType = JOptionPane.WARNING_MESSAGE;
         }
-
-        JOptionPane.showMessageDialog(ui, message, "Verificação de Planaridade", messageType);
+        JOptionPane.showMessageDialog(ui, message, "Planaridade: Euler", messageType);
     }
 
     private void clearGraph(){
