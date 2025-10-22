@@ -28,6 +28,7 @@ public class Vertex {
         this.y = y;
         this.latitude = latitude;
         this.longitude = longitude;
+        this.neighbours = new ArrayList<>();
     }
 
 
