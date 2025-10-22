@@ -12,12 +12,24 @@ public class Vertex {
     private boolean selected = false;
     public int radiusw = 25, radiush=25;
 
+    private Double latitude = null;
+    private Double longitude = null;
+
     public Vertex(String id, int x, int y) {
         this.id = id;
         this.x = x;
         this.y = y;
         this.neighbours = new ArrayList<>();
     }
+
+    public Vertex(String id, int x, int y, double latitude, double longitude) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
+
 
     public int getRadiusw(){
         return radiusw;
@@ -128,6 +140,28 @@ public class Vertex {
         // Draw text in white
         g2d.setColor(Color.WHITE);
         g2d.drawString(displayId, textX, textY);
+    }
+
+    // Getters and setters --------------------
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public boolean hasGeographicCoordinates() {
+        return latitude != null && longitude != null;
     }
 
 }

@@ -50,19 +50,25 @@ public class FileManager {
                 // Write graph type
                 writer.write("GRAPH_TYPE:" + graphPanel.getGraphType().name());
                 writer.newLine();
-                
+
                 // Write vertices
                 writer.write("VERTICES:" + vertices.size());
                 writer.newLine();
                 for (Vertex vertex : vertices) {
-                    writer.write(String.format("V:%s:%d:%d", 
-                        vertex.getId(), 
-                        vertex.getX(), 
-                        vertex.getY()
+                    String coordStr = "";
+                    if (vertex.hasGeographicCoordinates()) {
+                        coordStr = String.format(":%.6f:%.6f", vertex.getLatitude(), vertex.getLongitude());
+                    }
+                    writer.write(String.format("V:%s:%d:%d%s",
+                            vertex.getId(),
+                            vertex.getX(),
+                            vertex.getY(),
+                            coordStr
                     ));
                     writer.newLine();
                 }
-                
+
+
                 // Write connections
                 writer.write("CONNECTIONS:" + connections.size());
                 writer.newLine();
@@ -142,30 +148,39 @@ public class FileManager {
                 line = reader.readLine();
                 if (line != null && line.startsWith("VERTICES:")) {
                     int vertexCount = Integer.parseInt(line.substring("VERTICES:".length()));
-                    
+
                     // Read each vertex
                     for (int i = 0; i < vertexCount; i++) {
                         line = reader.readLine();
                         if (line != null && line.startsWith("V:")) {
                             String[] parts = line.substring(2).split(":");
-                            if (parts.length == 3) {
+                            if (parts.length >= 3) {
                                 String id = parts[0];
                                 int x = Integer.parseInt(parts[1]);
                                 int y = Integer.parseInt(parts[2]);
-                                
+
+                                Vertex vertex;
+
+                                if (parts.length == 5) {
+                                    double latitude = Double.parseDouble(parts[3]);
+                                    double longitude = Double.parseDouble(parts[4]);
+                                    vertex = new Vertex(id, x, y, latitude, longitude);
+                                } else {
+                                    vertex = new Vertex(id, x, y);
+                                }
+
                                 // Create vertex directly without dialog
-                                Vertex vertex = new Vertex(id, x, y);
                                 graphPanel.getVertexList().add(vertex);
                             }
                         }
                     }
                 }
-                
+
                 // Read connections count
                 line = reader.readLine();
                 if (line != null && line.startsWith("CONNECTIONS:")) {
                     int connectionCount = Integer.parseInt(line.substring("CONNECTIONS:".length()));
-                    
+
                     // Read each connection
                     for (int i = 0; i < connectionCount; i++) {
                         line = reader.readLine();
@@ -176,11 +191,11 @@ public class FileManager {
                                 String sourceId = parts[1];
                                 String targetId = parts[2];
                                 double weight = Double.parseDouble(parts[3]);
-                                
+
                                 // Find source and target vertices
                                 Vertex source = findVertexById(graphPanel, sourceId);
                                 Vertex target = findVertexById(graphPanel, targetId);
-                                
+
                                 if (source != null && target != null) {
                                     graphPanel.addConnection(connectionId, source, target, weight);
                                 }

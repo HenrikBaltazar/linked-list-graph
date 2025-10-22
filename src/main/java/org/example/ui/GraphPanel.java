@@ -86,20 +86,65 @@ public class GraphPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Nome do vértice deve possuir até 10 caracteres", "Nome Inválido", JOptionPane.ERROR_MESSAGE);
                 validName = false;
             }else{
-            for (Vertex v : vertexList) {
-                if(v.getId().equals(vertexName)) {
-                    JOptionPane.showMessageDialog(this, "Já existe um vértice chamado: "+vertexName+"\nPor favor escolha outro nome.", "Vértice já existe", JOptionPane.ERROR_MESSAGE);
-                    validName = false;
+                for (Vertex v : vertexList) {
+                    if(v.getId().equals(vertexName)) {
+                        JOptionPane.showMessageDialog(this, "Já existe um vértice chamado: "+vertexName+"\nPor favor escolha outro nome.", "Vértice já existe", JOptionPane.ERROR_MESSAGE);
+                        validName = false;
+                    }
                 }
-            }
             }
         }while (!validName);
 
         if (validName) {
             Vertex newVertex = new Vertex(vertexName, x, y);
+
+            int addCoords = JOptionPane.showConfirmDialog(
+                    this,
+                    "Deseja adicionar coordenadas geográficas (latitude/longitude)?",
+                    "Coordenadas Geográficas",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (addCoords == JOptionPane.YES_OPTION) {
+                try {
+                    String latStr = JOptionPane.showInputDialog(
+                            this,
+                            "Digite a latitude (ex: -25.0916):",
+                            "Latitude",
+                            JOptionPane.QUESTION_MESSAGE
+                    );
+
+                    if (latStr != null && !latStr.trim().isEmpty()) {
+                        double latitude = Double.parseDouble(latStr.trim());
+
+                        String lonStr = JOptionPane.showInputDialog(
+                                this,
+                                "Digite a longitude (ex: -50.1668):",
+                                "Longitude",
+                                JOptionPane.QUESTION_MESSAGE
+                        );
+
+                        if (lonStr != null && !lonStr.trim().isEmpty()) {
+                            double longitude = Double.parseDouble(lonStr.trim());
+                            newVertex.setLatitude(latitude);
+                            newVertex.setLongitude(longitude);
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Coordenadas inválidas. Vértice será criado sem coordenadas geográficas.",
+                            "Aviso",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                }
+            }
+
             this.vertexList.add(newVertex);
         }
     }
+
 
     public boolean removeVertex(Vertex vertex) {
         if (vertex == null) return false;
@@ -1566,6 +1611,25 @@ public class GraphPanel extends JPanel {
             return;
         }
 
+        boolean allHaveCoords = vertexList.stream().allMatch(Vertex::hasGeographicCoordinates);
+
+        if (!allHaveCoords) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    """
+                            Alguns vértices não possuem coordenadas geográficas.
+                            O algoritmo A* usará as coordenadas da tela como aproximação.
+                            Deseja continuar?""",
+                    "Aviso - Coordenadas Geográficas",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
         // --- 1. Obter Vértice Inicial e Final do Usuário ---
         String[] vertexIds = vertexList.stream().map(Vertex::getId).toArray(String[]::new);
 
@@ -1587,19 +1651,25 @@ public class GraphPanel extends JPanel {
         Vertex startNode = vertexList.stream().filter(v -> v.getId().equals(startVertexId)).findFirst().orElse(null);
         Vertex endNode = vertexList.stream().filter(v -> v.getId().equals(endVertexId)).findFirst().orElse(null);
 
+        // Display h(n) table for the destination
+        displayHeuristicTable(endNode);
+
         // --- 2. Inicialização do A* ---
         // openSet contém os nós a serem avaliados, priorizados pelo menor fScore
         Map<Vertex, Double> fScore = new HashMap<>();
+        Map<Vertex, Double> gScore = new HashMap<>();
+        Map<Vertex, Double> hScore = new HashMap<>(); // Store h(n) values
+
         PriorityQueue<Vertex> openSet = new PriorityQueue<>(Comparator.comparingDouble(fScore::get));
 
         // cameFrom armazena o nó anterior no caminho mais curto
         Map<Vertex, Vertex> cameFrom = new HashMap<>();
 
         // gScore é o custo do início até o nó atual
-        Map<Vertex, Double> gScore = new HashMap<>();
         for (Vertex v : vertexList) {
             gScore.put(v, Double.POSITIVE_INFINITY);
             fScore.put(v, Double.POSITIVE_INFINITY);
+            hScore.put(v, heuristic(v, endNode));
         }
         gScore.put(startNode, 0.0);
         fScore.put(startNode, heuristic(startNode, endNode));
@@ -1611,8 +1681,8 @@ public class GraphPanel extends JPanel {
 
             if (current.equals(endNode)) {
                 // Caminho encontrado!
-                reconstructAStarPath(cameFrom, current);
-                showAStarResultDialog(startNode, endNode);
+                reconstructAStarPath(cameFrom, current, gScore, hScore);
+                showAStarResultDialog(startNode, endNode, gScore, hScore);
                 return;
             }
 
@@ -1639,67 +1709,110 @@ public class GraphPanel extends JPanel {
         JOptionPane.showMessageDialog(this, "Não foi possível encontrar um caminho de " + startVertexId + " para " + endVertexId + ".", "Caminho Não Encontrado", JOptionPane.WARNING_MESSAGE);
     }
 
-    // Heurística: Distância Euclidiana (linha reta)
+
+    // Heurística: Distância de Manhattan usando coordenadas geográficas
     private double heuristic(Vertex a, Vertex b) {
-        return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2));
+        if (a.hasGeographicCoordinates() && b.hasGeographicCoordinates()) {
+            // Use Manhattan distance with geographic coordinates
+            // Convert to kilometers (approximation: 1 degree ≈ 111 km)
+            double latDiff = Math.abs(a.getLatitude() - b.getLatitude()) * 111.0;
+            double lonDiff = Math.abs(a.getLongitude() - b.getLongitude()) * 111.0;
+            return latDiff + lonDiff;
+        } else {
+            // Fallback: use screen coordinates
+            return Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY());
+        }
     }
 
-    // Reconstrói o caminho e preenche as variáveis de visualização
-    private void reconstructAStarPath(Map<Vertex, Vertex> cameFrom, Vertex current) {
-        clearAStarPath(); // Limpa resultados anteriores
-        List<Vertex> path = new ArrayList<>();
-        path.add(current);
-        while (cameFrom.containsKey(current)) {
-            current = cameFrom.get(current);
-            path.add(0, current); // Adiciona no início para inverter a ordem
+
+    // Display h(n) table for all vertices relative to destination
+    private void displayHeuristicTable(Vertex destination) {
+        StringBuilder table = new StringBuilder();
+        table.append("Tabela h(n) - Destino: ").append(destination.getId()).append("\n\n");
+        table.append(String.format("%-20s | %s\n", "Cidade", "Distância (km)"));
+        table.append("-------------------------------------------\n");
+
+        // Sort vertices by heuristic value
+        List<Vertex> sortedVertices = new ArrayList<>(vertexList);
+        sortedVertices.sort(Comparator.comparingDouble(v -> heuristic(v, destination)));
+
+        for (Vertex v : sortedVertices) {
+            double h = heuristic(v, destination);
+            table.append(String.format("%-20s | %.0f\n", v.getId(), h));
         }
 
-        // Preenche a lista de conexões e o peso total para desenhar
-        for (int i = 0; i < path.size() - 1; i++) {
-            Vertex u = path.get(i);
-            Vertex v = path.get(i + 1);
-            Connection conn = findConnectionBetween(u, v);
-            if (conn != null) {
-                aStarPathConnections.add(conn);
-                aStarPathTotalWeight += conn.getWeight();
+        JTextArea textArea = new JTextArea(table.toString());
+        textArea.setEditable(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(400, 300));
+
+        JOptionPane.showMessageDialog(
+                this,
+                scrollPane,
+                "Tabela Heurística h(n)",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
+
+    // Reconstrói o caminho e preenche as variáveis de visualização
+    private void reconstructAStarPath(Map<Vertex, Vertex> cameFrom, Vertex current,
+                                      Map<Vertex, Double> gScore, Map<Vertex, Double> hScore) {
+        aStarPathConnections.clear();
+        aStarPathTotalWeight = 0.0;
+
+        while (cameFrom.containsKey(current)) {
+            Vertex previous = cameFrom.get(current);
+            Connection connection = findConnectionBetween(previous, current);
+            if (connection != null) {
+                aStarPathConnections.add(0, connection);
+                aStarPathTotalWeight += connection.getWeight();
             }
+            current = previous;
         }
+
         showAStarPath = true;
         repaint();
     }
 
+
     // Exibe o diálogo com o resultado
-    private void showAStarResultDialog(Vertex start, Vertex end) {
-        String pathStr;
-        if (aStarPathConnections.isEmpty()) {
-            pathStr = "Caminho direto (vértices adjacentes).";
-            // Adiciona o primeiro vértice se o caminho for apenas uma aresta.
-            if (start != null) {
-                pathStr = start.getId() + " → " + end.getId();
-            }
-        } else {
-            // Constrói a string do caminho corretamente
-            StringBuilder sb = new StringBuilder();
-            // Começa com o ID do primeiro vértice do caminho
-            sb.append(aStarPathConnections.get(0).getSource().getId());
-            // Adiciona o alvo de cada conexão na sequência
-            for (Connection conn : aStarPathConnections) {
-                sb.append(" → ").append(conn.getTarget().getId());
-            }
-            pathStr = sb.toString();
+    private void showAStarResultDialog(Vertex start, Vertex end,
+                                       Map<Vertex, Double> gScore, Map<Vertex, Double> hScore) {
+        StringBuilder pathString = new StringBuilder();
+        pathString.append("Caminho mais curto encontrado:\n\n");
+
+        pathString.append(start.getId());
+        Vertex current = start;
+
+        for (Connection conn : aStarPathConnections) {
+            Vertex next = conn.getSource().equals(current) ? conn.getTarget() : conn.getSource();
+            pathString.append(" → ").append(next.getId());
+            pathString.append(String.format(" (%.2f)", conn.getWeight()));
+            current = next;
         }
 
-        String message = String.format(
-                "✓ Caminho mais curto (A*) encontrado de %s para %s!\n\n" +
-                        " • Custo Total do Caminho: %.2f\n" +
-                        " • Número de Arestas: %d\n\n" +
-                        "Sequência:\n%s\n\n" +
-                        "O caminho será destacado em laranja no grafo.",
-                start.getId(), end.getId(), aStarPathTotalWeight, aStarPathConnections.size(),
-                pathStr
+        pathString.append("\n\n");
+        pathString.append(String.format("Custo Total g(n): %.2f\n", aStarPathTotalWeight));
+        pathString.append(String.format("Heurística h(n) do destino: %.2f\n", hScore.get(end)));
+        pathString.append(String.format("Número de conexões: %d\n", aStarPathConnections.size()));
+
+        if (end.hasGeographicCoordinates()) {
+            pathString.append("\nCoordenadas do destino:\n");
+            pathString.append(String.format("  Latitude: %.4f\n", end.getLatitude()));
+            pathString.append(String.format("  Longitude: %.4f\n", end.getLongitude()));
+        }
+
+        JOptionPane.showMessageDialog(
+                this,
+                pathString.toString(),
+                "Resultado do Algoritmo A*",
+                JOptionPane.INFORMATION_MESSAGE
         );
-        JOptionPane.showMessageDialog(this, message, "Algoritmo A* - Resultado", JOptionPane.INFORMATION_MESSAGE);
     }
+
 
     // Método de limpeza
     public void clearAStarPath() {
