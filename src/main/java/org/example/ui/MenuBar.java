@@ -91,7 +91,6 @@ public class MenuBar extends JMenuBar {
         int v = graphPanel.getVertexList().size();
         int e = graphPanel.getConnectionList().size();
 
-        // Caso trivial: Grafos com menos de 3 vértices são sempre planares.
         if (v < 3) {
             JOptionPane.showMessageDialog(ui,
                     "O grafo é PLANAR. ✅\n\n(Grafos com menos de 3 vértices são sempre planares).",

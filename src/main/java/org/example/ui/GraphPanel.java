@@ -929,9 +929,9 @@ public class GraphPanel extends JPanel {
             boolean isMSTEdge = showMST && mstEdges.contains(connection);
             boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
             boolean isDFSEdge = showDFS && dfsTreeEdges.contains(connection);
-            boolean isAStarEdge = showAStarPath && aStarPathConnections.contains(connection); // NOVO
+            boolean isAStarEdge = showAStarPath && aStarPathConnections.contains(connection);
 
-            if (isAStarEdge) { // Dê prioridade ao A* se ele estiver ativo
+            if (isAStarEdge) {
                 drawAStarConnection(g2d, connection);
             }else if (isMSTEdge) {
                 drawMSTConnection(g2d, connection);
@@ -951,8 +951,8 @@ public class GraphPanel extends JPanel {
                 drawBFSVertex(g2d, vertex);
             } else if (showDFS && dfsVisitOrder.contains(vertex)) {
                 drawDFSVertex(g2d, vertex);
-            }else if (showColoring && vertexColors.containsKey(vertex)) { // NOVO BLOCO
-                drawColoredVertex(g2d, vertex);                          // NOVO BLOCO
+            }else if (showColoring && vertexColors.containsKey(vertex)) {
+                drawColoredVertex(g2d, vertex);
             }else {
                 vertex.draw(g);
             }
@@ -990,10 +990,9 @@ public class GraphPanel extends JPanel {
         Stroke originalStroke = g2d.getStroke();
         Color originalColor = g2d.getColor();
 
-        g2d.setColor(new Color(255, 140, 0)); // Laranja vivo
+        g2d.setColor(new Color(255, 140, 0));
         g2d.setStroke(new BasicStroke(4.5f));
 
-        // CORREÇÃO: Desenha a linha diretamente aqui
         g2d.drawLine(
                 connection.getSource().getX(),
                 connection.getSource().getY(),
@@ -1001,14 +1000,12 @@ public class GraphPanel extends JPanel {
                 connection.getTarget().getY()
         );
 
-        // Adiciona o rótulo para consistência visual
         drawAStarWeightAndId(g2d, connection);
 
         g2d.setStroke(originalStroke);
         g2d.setColor(originalColor);
     }
 
-    // NOVO MÉTODO AUXILIAR para desenhar o peso e ID da conexão A*
     private void drawAStarWeightAndId(Graphics2D g2d, Connection connection) {
         int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
         int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
@@ -1023,41 +1020,38 @@ public class GraphPanel extends JPanel {
         int paddingX = 6;
         int paddingY = 4;
 
-        g2d.setColor(new Color(255, 230, 200)); // Fundo laranja claro
+        g2d.setColor(new Color(255, 230, 200));
         g2d.fillRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        g2d.setColor(new Color(255, 140, 0)); // Borda laranja
+        g2d.setColor(new Color(255, 140, 0));
         g2d.drawRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
                 textWidth + (paddingX * 2), textHeight + (paddingY * 2));
 
-        g2d.setColor(new Color(180, 80, 0)); // Texto laranja escuro
+        g2d.setColor(new Color(180, 80, 0));
         g2d.drawString(combinedText, midX - textWidth / 2, midY + textHeight / 4);
     }
 
     private void drawAStarInfo(Graphics2D g2d) {
         g2d.setColor(new Color(200, 100, 0));
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
-        String info = String.format("A* Path Cost: %.2f", aStarPathTotalWeight);
+        String info = String.format("Custo do caminho A*: %.2f", aStarPathTotalWeight);
         g2d.drawString(info, 10, getHeight() - 110);
     }
 
     private void drawColoredVertex(Graphics2D g2d, Vertex vertex) {
         Color fillColor = vertexColors.get(vertex);
         if (fillColor == null) {
-            vertex.draw(g2d); // Fallback para o desenho padrão
+            vertex.draw(g2d);
             return;
         }
 
         int x = vertex.getX();
         int y = vertex.getY();
-        int radius = 25; // Assumindo um raio padrão
-
-        // Desenha o preenchimento com a cor do algoritmo
+        int radius = 25;
         g2d.setColor(fillColor);
         g2d.fillOval(x - radius, y - radius, radius * 2, radius * 2);
 
-        // Desenha a borda
         if (vertex.isSelected()) {
             g2d.setColor(Color.RED);
             g2d.setStroke(new BasicStroke(3));
@@ -1067,18 +1061,16 @@ public class GraphPanel extends JPanel {
         }
         g2d.drawOval(x - radius, y - radius, radius * 2, radius * 2);
 
-        // Desenha o ID do vértice
         g2d.setColor(Color.BLACK);
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
         FontMetrics fm = g2d.getFontMetrics();
         int textWidth = fm.stringWidth(vertex.getId());
         g2d.drawString(vertex.getId(), x - textWidth / 2, y + fm.getAscent() / 2);
 
-        g2d.setStroke(new BasicStroke(1)); // Reseta o stroke
+        g2d.setStroke(new BasicStroke(1));
     }
 
 
-    // NOVO: Método para desenhar a legenda da coloração
     private void drawColoringInfo(Graphics2D g2d) {
         g2d.setColor(new Color(60, 60, 60));
         g2d.setFont(new Font("Arial", Font.BOLD, 14));
@@ -1465,30 +1457,23 @@ public class GraphPanel extends JPanel {
             return;
         }
 
-        // Limpa colorações anteriores
         clearColoring();
 
-        // 1. Ordenar os vértices em ordem decrescente de grau
         List<Vertex> sortedVertices = new ArrayList<>(vertexList);
         sortedVertices.sort((v1, v2) -> Integer.compare(v2.getNeighbours().size(), v1.getNeighbours().size()));
 
         int colorIndex = 0;
         List<Color> colorPalette = new ArrayList<>();
 
-        // 2. Loop principal: continua até que todos os vértices estejam coloridos
         while (vertexColors.size() < vertexList.size()) {
-            // Gera uma nova cor distinta para a iteração atual
             Color currentColor = generateDistinctColor(colorPalette.size());
             colorPalette.add(currentColor);
 
-            // 3. Percorre a lista ordenada de vértices
             for (Vertex currentVertex : sortedVertices) {
-                // Se o vértice já está colorido, pula para o próximo
                 if (vertexColors.containsKey(currentVertex)) {
                     continue;
                 }
 
-                // Verifica se algum vizinho já tem a cor atual
                 boolean conflict = false;
                 for (Vertex neighbor : currentVertex.getNeighbours()) {
                     if (currentColor.equals(vertexColors.get(neighbor))) {
@@ -1497,7 +1482,6 @@ public class GraphPanel extends JPanel {
                     }
                 }
 
-                // 4. Se não há conflito, colore o vértice
                 if (!conflict) {
                     vertexColors.put(currentVertex, currentColor);
                 }
@@ -1508,7 +1492,6 @@ public class GraphPanel extends JPanel {
         this.chromaticNumber = colorIndex;
         this.showColoring = true;
 
-        // Exibe o resultado
         String message = String.format(
                 "✓ Coloração de Grafo (Welsh-Powell) concluída!\n\n" +
                         "Número de cores utilizadas (Número Cromático Heurístico): %d\n\n" +
@@ -1521,20 +1504,12 @@ public class GraphPanel extends JPanel {
         System.out.printf("Welsh-Powell executado. Número cromático encontrado: %d%n", this.chromaticNumber);
     }
 
-    /**
-     * Gera cores visualmente distintas usando o HSB color space e a proporção áurea.
-     * Isso garante uma boa variação de cores, mesmo para um grande número de cores.
-     * @param index O índice da cor a ser gerada.
-     * @return Um objeto Color.
-     */
+
     private Color generateDistinctColor(int index) {
-        // Usamos a proporção áurea para gerar matizes (hues) bem distribuídos
         float hue = (index * 0.61803398875f) % 1.0f;
-        // Mantemos a saturação e o brilho altos para cores vivas
         return Color.getHSBColor(hue, 0.9f, 0.95f);
     }
 
-    // NOVO: Método para limpar a visualização da coloração
     public void clearColoring() {
         showColoring = false;
         vertexColors.clear();
@@ -1544,25 +1519,19 @@ public class GraphPanel extends JPanel {
 
     public boolean hasThreeCycle() {
         if (vertexList.size() < 3) {
-            return false; // É impossível formar um ciclo de 3 com menos de 3 vértices.
+            return false;
         }
 
         if (currentGraphType == GraphType.UNDIRECTED) {
-            // Lógica para grafo não-dirigido:
-            // Para cada vértice 'u', olhamos para todos os pares de seus vizinhos ('v' e 'w').
-            // Se 'v' e 'w' também forem vizinhos entre si, então {u, v, w} formam um triângulo.
             for (Vertex u : vertexList) {
                 List<Vertex> neighbors = u.getNeighbours();
                 if (neighbors.size() < 2) {
                     continue;
                 }
-
                 for (int i = 0; i < neighbors.size(); i++) {
                     for (int j = i + 1; j < neighbors.size(); j++) {
                         Vertex v = neighbors.get(i);
                         Vertex w = neighbors.get(j);
-                        // Já sabemos que (u,v) e (u,w) estão conectados.
-                        // Só precisamos verificar se (v,w) também estão.
                         if (areAdjacent(v, w)) {
                             System.out.println("Ciclo de 3 (não-dirigido) encontrado: " + u.getId() + " - " + v.getId() + " - " + w.getId());
                             return true;
@@ -1570,15 +1539,11 @@ public class GraphPanel extends JPanel {
                     }
                 }
             }
-        } else { // Lógica para grafo dirigido (DIRECTED)
-            // Procuramos por um caminho de comprimento 2 (u -> v -> w) e então
-            // verificamos se existe uma aresta de retorno (w -> u).
+        } else {
             for (Vertex u : vertexList) {
                 for (Vertex v : u.getNeighbours()) { // u -> v
                     for (Vertex w : v.getNeighbours()) { // v -> w
-                        // Agora verificamos se w se conecta de volta a u (w -> u)
                         if (areAdjacent(w, u)) {
-                            // Certifica-se de que são três vértices distintos
                             if (!w.equals(u) && !w.equals(v)) {
                                 System.out.println("Ciclo de 3 (dirigido) encontrado: " + u.getId() + " -> " + v.getId() + " -> " + w.getId() + " -> " + u.getId());
                                 return true;
@@ -1588,8 +1553,6 @@ public class GraphPanel extends JPanel {
                 }
             }
         }
-
-        // Se chegamos até aqui, nenhum ciclo de 3 foi encontrado.
         return false;
     }
 
