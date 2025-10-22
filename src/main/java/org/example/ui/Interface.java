@@ -11,7 +11,7 @@ public class Interface extends JFrame {
     private MenuBar menuBar;
 
     public Interface() {
-        graphPanel = new GraphPanel();
+        graphPanel = new GraphPanel(this);
         toolbar = new Toolbar(this);
         menuBar = new MenuBar(this);
         setMinimumSize(new Dimension(W, H));
@@ -22,6 +22,8 @@ public class Interface extends JFrame {
         getContentPane().add(toolbar, BorderLayout.PAGE_START);
         getContentPane().add(graphPanel, BorderLayout.CENTER);
     }
+
+    public Toolbar getToolbar() { return toolbar; }
 
     public GraphPanel getGraphPanel() { return graphPanel; }
 

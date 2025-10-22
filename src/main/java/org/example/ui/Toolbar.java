@@ -122,7 +122,13 @@ public class Toolbar extends JToolBar {
         System.out.println("Grafo alterado para: " + graphPanel.getGraphTypeDescription());
     }
 
-
+    public void setOrientationButton(GraphPanel.GraphType graphType) {
+        if (graphType == GraphPanel.GraphType.DIRECTED) {
+            orientationButton.setSelected(true);
+        }else if (graphType == GraphPanel.GraphType.UNDIRECTED) {
+            orientationButton.setSelected(false);
+        }
+    }
 
     private void updateTooltipsForGraphType() {
         String connectionType = ui.getGraphPanel().getGraphType() == GraphPanel.GraphType.DIRECTED ? "arcos" : "arestas";

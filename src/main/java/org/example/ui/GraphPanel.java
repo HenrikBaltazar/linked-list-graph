@@ -55,7 +55,10 @@ public class GraphPanel extends JPanel {
     private List<Connection> aStarPathConnections = new ArrayList<>();
     private double aStarPathTotalWeight = 0.0;
 
-    public GraphPanel() {
+    private Interface ui;
+
+    public GraphPanel(Interface ui) {
+        this.ui = ui;
         MouseAdapter mouseListener = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -1398,6 +1401,7 @@ public class GraphPanel extends JPanel {
 
     public void setGraphType(GraphType graphType) {
         currentGraphType = graphType;
+        ui.getToolbar().setOrientationButton(currentGraphType);
         convertExistingConnections();
         clearBFS();
         clearComponents();
