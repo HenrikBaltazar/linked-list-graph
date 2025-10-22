@@ -18,7 +18,7 @@ public class MenuBar extends JMenuBar {
     private final JMenuItem jMenuItemPlanar, jMenuItemWP, jMenuItemAstar;
     public MenuBar(Interface ui) {
         this.ui = ui;
-        fileManager = new FileManager();
+        fileManager = new FileManager(ui);
 
         jMenuFile = new JMenu("Arquivo");
         jMenuFile.add(jMenuItemOpen = new JMenuItem("Abrir..."));

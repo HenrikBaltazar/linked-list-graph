@@ -1400,7 +1400,7 @@ public class GraphPanel extends JPanel {
     }
 
 
-    public List<Vertex> getVertexList() { return new ArrayList<>(vertexList); }
+    public List<Vertex> getVertexList() { return vertexList; }
     public List<Connection> getConnectionList() { return new ArrayList<>(connectionList); }
     public GraphType getGraphType() { return currentGraphType; }
 
