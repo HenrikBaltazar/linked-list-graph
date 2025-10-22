@@ -1,7 +1,5 @@
 package org.example.ui;
 
-import org.example.FileManager;
-
 import javax.swing.*;
 import java.awt.*;
 
@@ -26,5 +24,7 @@ public class Interface extends JFrame {
     }
 
     public GraphPanel getGraphPanel() { return graphPanel; }
+
+    public MenuBar getUIMenuBar(){ return menuBar; }
 
 }

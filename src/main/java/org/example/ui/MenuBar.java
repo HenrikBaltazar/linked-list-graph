@@ -72,6 +72,12 @@ public class MenuBar extends JMenuBar {
         jMenuItemAstar.addActionListener(_ -> aStar());
     }
 
+    public void setUndirectedFeatures(boolean flag){
+        jMenuItemWP.setEnabled(flag);
+        jMenuItemPrim.setEnabled(flag);
+        jMenuItemPlanar.setEnabled(flag);
+    }
+
     private void aStar(){
         GraphPanel graphPanel = ui.getGraphPanel();
         graphPanel.clearAllAlgorithmVisualizations();

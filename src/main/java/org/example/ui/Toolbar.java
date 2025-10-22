@@ -109,8 +109,10 @@ public class Toolbar extends JToolBar {
         graphPanel.clearAllAlgorithmVisualizations();
         if (graphPanel.getGraphType() == GraphPanel.GraphType.UNDIRECTED) {
                 graphPanel.setGraphType(GraphPanel.GraphType.DIRECTED);
+                ui.getUIMenuBar().setUndirectedFeatures(false);
         } else {
                 graphPanel.setGraphType(GraphPanel.GraphType.UNDIRECTED);
+                ui.getUIMenuBar().setUndirectedFeatures(true);
         }
 
         orientationButton.setSelected(graphPanel.getGraphType() == GraphPanel.GraphType.DIRECTED);
