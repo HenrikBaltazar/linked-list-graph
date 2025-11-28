@@ -6,6 +6,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
+import java.util.Collections;
+import java.util.Random;
 
 import org.example.algorithms.*;
 import org.example.graph.Arc;
@@ -55,6 +57,10 @@ public class GraphPanel extends JPanel {
     private boolean showAStarPath = false;
     private List<Connection> aStarPathConnections = new ArrayList<>();
     private double aStarPathTotalWeight = 0.0;
+
+    private boolean showPCVPath = false;
+    private List<Connection> pcvPathConnections = new ArrayList<>();
+    private double pcvTotalWeight = 0.0;
 
     private Interface ui;
 
@@ -979,8 +985,11 @@ public class GraphPanel extends JPanel {
             boolean isBFSEdge = showBFS && bfsTreeEdges.contains(connection);
             boolean isDFSEdge = showDFS && dfsTreeEdges.contains(connection);
             boolean isAStarEdge = showAStarPath && aStarPathConnections.contains(connection);
+            boolean isPCVEdge = showPCVPath && pcvPathConnections.contains(connection); // NOVO
 
-            if (isAStarEdge) {
+            if (isPCVEdge) { // NOVO (Prioridade alta para desenhar por cima)
+                drawPCVConnection(g2d, connection);
+            }else if (isAStarEdge) {
                 drawAStarConnection(g2d, connection);
             }else if (isMSTEdge) {
                 drawMSTConnection(g2d, connection);
@@ -1029,10 +1038,67 @@ public class GraphPanel extends JPanel {
             drawComponentsInfo(g2d);
         }
 
-        if (showAStarPath) { // NOVO
+        if (showAStarPath) {
             drawAStarInfo(g2d);
         }
 
+        if (showPCVPath) {
+            drawPCVInfo(g2d);
+        }
+
+    }
+
+    private void drawPCVConnection(Graphics2D g2d, Connection connection) {
+        Stroke originalStroke = g2d.getStroke();
+        Color originalColor = g2d.getColor();
+
+        g2d.setColor(Color.MAGENTA); // Cor Magenta para o PCV
+        g2d.setStroke(new BasicStroke(4.5f));
+
+        g2d.drawLine(
+                connection.getSource().getX(),
+                connection.getSource().getY(),
+                connection.getTarget().getX(),
+                connection.getTarget().getY()
+        );
+
+        drawPCVWeightAndId(g2d, connection);
+
+        g2d.setStroke(originalStroke);
+        g2d.setColor(originalColor);
+    }
+
+    private void drawPCVWeightAndId(Graphics2D g2d, Connection connection) {
+        int midX = (connection.getSource().getX() + connection.getTarget().getX()) / 2;
+        int midY = (connection.getSource().getY() + connection.getTarget().getY()) / 2;
+
+        g2d.setFont(new Font("Arial", Font.BOLD, 15));
+        FontMetrics fm = g2d.getFontMetrics();
+
+        String combinedText = connection.getId() + "(" + String.format("%.1f", connection.getWeight()) + ")";
+        int textWidth = fm.stringWidth(combinedText);
+        int textHeight = fm.getHeight();
+
+        int paddingX = 6;
+        int paddingY = 4;
+
+        g2d.setColor(new Color(255, 200, 255)); // Fundo rosa claro
+        g2d.fillRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        g2d.setColor(Color.MAGENTA); // Borda Magenta
+        g2d.drawRect(midX - textWidth / 2 - paddingX, midY - textHeight / 2 - paddingY,
+                textWidth + (paddingX * 2), textHeight + (paddingY * 2));
+
+        g2d.setColor(new Color(100, 0, 100)); // Texto roxo escuro
+        g2d.drawString(combinedText, midX - textWidth / 2, midY + textHeight / 4);
+    }
+
+    private void drawPCVInfo(Graphics2D g2d) {
+        g2d.setColor(Color.MAGENTA);
+        g2d.setFont(new Font("Arial", Font.BOLD, 14));
+        String info = String.format("Custo Total PCV: %.2f", pcvTotalWeight);
+        g2d.drawString(info, 10, getHeight() - 130); // Posicionado logo acima do A*
     }
 
     private void drawAStarConnection(Graphics2D g2d, Connection connection) {
@@ -1160,6 +1226,7 @@ public class GraphPanel extends JPanel {
         clearDFS();
         clearColoring();
         clearAStarPath();
+        clearPCV();
     }
 
     private void drawMSTConnection(Graphics2D g2d, Connection connection) {
@@ -1606,8 +1673,166 @@ public class GraphPanel extends JPanel {
         return false;
     }
 
-    public void applyPCVAlgorithm(){
+    public void applyPCVAlgorithm() {
+        if (vertexList.size() < 3) {
+            JOptionPane.showMessageDialog(this, "O grafo precisa ter pelo menos 3 vértices para o PCV.", "Erro - PCV", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
+        // --- Configuração Simples ---
+        // Você pode manter aquele JSpinner que fiz antes aqui se quiser,
+        // mas vou simplificar os valores hardcoded pra focar na lógica.
+        int popSize = 50;
+        int maxGenerations = 20;
+        double mutationRate = 0.01; // 1%
+        int elitismCount = 2;
+
+        // 1. População Inicial
+        List<Individual> population = new ArrayList<>();
+        List<Vertex> baseGenes = new ArrayList<>(vertexList);
+
+        for (int i = 0; i < popSize; i++) {
+            Collections.shuffle(baseGenes);
+            // Passamos a lista de conexões do GraphPanel para o Indivíduo calcular seu custo
+            population.add(new Individual(baseGenes, connectionList));
+        }
+
+        int currentGeneration = 0;
+        boolean userWantsToContinue = true;
+
+        while (userWantsToContinue && currentGeneration < maxGenerations) {
+            currentGeneration++;
+            Collections.sort(population); // Ordena pelo fitness (definido na classe Individual)
+
+            // --- Feedback ao Usuário ---
+            StringBuilder stats = new StringBuilder();
+            stats.append("Geração: ").append(currentGeneration).append("\n");
+            stats.append("Melhor Custo: ").append(String.format("%.2f", population.get(0).getFitness())).append("\n\n");
+            stats.append("Top 5 Indivíduos:\n");
+            for(int k=0; k < Math.min(5, population.size()); k++){
+                stats.append(k+1).append(". ").append(population.get(k).toString()).append("\n");
+            }
+            stats.append("\nContinuar?");
+
+            int choice = JOptionPane.showConfirmDialog(this, stats.toString(), "AG - Geração " + currentGeneration, JOptionPane.YES_NO_OPTION);
+            if (choice != JOptionPane.YES_OPTION) break;
+
+            // --- Nova Geração ---
+            List<Individual> newPopulation = new ArrayList<>();
+
+            // 1. Elitismo
+            for (int i = 0; i < elitismCount; i++) newPopulation.add(population.get(i));
+
+            // 2. Cruzamento e Mutação
+            Random rand = new Random();
+            while (newPopulation.size() < popSize) {
+                Individual p1 = tournamentSelection(population);
+                Individual p2 = tournamentSelection(population);
+
+                List<Vertex> childGenes = pmxCrossover(p1.getGenes(), p2.getGenes());
+
+                if (rand.nextDouble() < mutationRate) {
+                    swapMutation(childGenes);
+                }
+
+                newPopulation.add(new Individual(childGenes, connectionList));
+            }
+            population = newPopulation;
+
+            // Lógica de estender gerações (obrigatório)
+            if (currentGeneration == maxGenerations) {
+                int extend = JOptionPane.showConfirmDialog(this, "Adicionar +20 gerações?", "Fim", JOptionPane.YES_NO_OPTION);
+                if (extend == JOptionPane.YES_OPTION) maxGenerations += 20;
+            }
+        }
+
+        // Finalização
+        Collections.sort(population);
+        Individual best = population.get(0);
+        reconstructPCVPath(best); // Visualiza a melhor rota
+    }
+
+    // Seleção por Torneio
+    private Individual tournamentSelection(List<Individual> pop) {
+        Random rand = new Random();
+        Individual best = null;
+        for (int i = 0; i < 3; i++) {
+            Individual ind = pop.get(rand.nextInt(pop.size()));
+            if (best == null || ind.getFitness() < best.getFitness()) {
+                best = ind;
+            }
+        }
+        return best;
+    }
+
+    // Mutação Swap (Troca simples)
+    private void swapMutation(List<Vertex> genes) {
+        Random rand = new Random();
+        int i = rand.nextInt(genes.size());
+        int j = rand.nextInt(genes.size());
+        Collections.swap(genes, i, j);
+    }
+
+    // Cruzamento PMX (Lógica principal de corte e mapeamento)
+    private List<Vertex> pmxCrossover(List<Vertex> p1, List<Vertex> p2) {
+        int n = p1.size();
+        Vertex[] childArr = new Vertex[n];
+        Random rand = new Random();
+
+        int cut1 = rand.nextInt(n);
+        int cut2 = rand.nextInt(n);
+        if (cut1 > cut2) { int temp = cut1; cut1 = cut2; cut2 = temp; }
+
+        // Copia o miolo do pai 1
+        for (int i = cut1; i <= cut2; i++) childArr[i] = p1.get(i);
+
+        // Resolve conflitos do pai 2
+        for (int i = cut1; i <= cut2; i++) {
+            Vertex geneInP2 = p2.get(i);
+            if (!containsVertex(childArr, geneInP2)) {
+                int pos = i;
+                Vertex valInP1 = p1.get(pos);
+                while (true) {
+                    int posInP2 = p2.indexOf(valInP1);
+                    if (posInP2 >= cut1 && posInP2 <= cut2) {
+                        valInP1 = p1.get(posInP2);
+                    } else {
+                        childArr[posInP2] = geneInP2;
+                        break;
+                    }
+                }
+            }
+        }
+        // Preenche buracos restantes
+        for (int i = 0; i < n; i++) {
+            if (childArr[i] == null) childArr[i] = p2.get(i);
+        }
+        return Arrays.asList(childArr);
+    }
+
+    private boolean containsVertex(Vertex[] arr, Vertex v) {
+        for (Vertex x : arr) if (x != null && x.equals(v)) return true;
+        return false;
+    }
+
+    // Prepara a visualização final
+    private void reconstructPCVPath(Individual best) {
+        pcvPathConnections.clear();
+
+        List<Vertex> r = best.getGenes();
+
+        for (int i = 0; i < r.size(); i++) {
+            Vertex from = r.get(i);
+            Vertex to = r.get((i + 1) % r.size());
+            Connection c = findConnectionBetween(from, to);
+            if (c != null) pcvPathConnections.add(c);
+        }
+
+        clearAllAlgorithmVisualizations();
+        showPCVPath = true;
+        repaint();
+        pcvTotalWeight = best.getFitness();
+        JOptionPane.showMessageDialog(this, "Melhor rota encontrada com custo: " + pcvTotalWeight);
     }
 
     public void applyAStarAlgorithm() {
@@ -1825,6 +2050,13 @@ public class GraphPanel extends JPanel {
         aStarPathConnections.clear();
         aStarPathTotalWeight = 0.0;
         repaint();
+    }
+
+    public void clearPCV() {
+        this.showPCVPath = false;           // Para de desenhar
+        this.pcvPathConnections.clear();    // Limpa a lista de arestas da rota
+        this.pcvTotalWeight = 0.0;          // Zera o peso total
+        repaint();                          // Atualiza a tela pra sumir o desenho
     }
 
 }
