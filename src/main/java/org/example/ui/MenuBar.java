@@ -16,7 +16,7 @@ public class MenuBar extends JMenuBar {
     private final JMenuItem jMenuItemOpen, jMenuItemSave, jMenuItemClear;
     private final JMenuItem jMenuItemAdjMatrix, jMenuItemIncMatrix;
     private final JMenuItem jMenuItemCheckAdjacency, jMenuItemPrim, jMenuItemBfs, jMenuItemDfs, jMenuItemConexo;
-    private final JMenuItem jMenuItemPlanarEuler, jMenuItemPlanarTarjan, jMenuItemWP, jMenuItemAstar;
+    private final JMenuItem jMenuItemPlanarEuler, jMenuItemPlanarTarjan, jMenuItemWP, jMenuItemAstar, jMenuItemPCV;
     public MenuBar(Interface ui) {
         this.ui = ui;
         fileManager = new FileManager(ui);
@@ -37,6 +37,7 @@ public class MenuBar extends JMenuBar {
         jMenuAlg.add(jMenuItemPlanarEuler = new JMenuItem("Planaridade (EULER)"));
         jMenuAlg.add(jMenuItemPlanarTarjan = new JMenuItem("Planaridade (Hopcroft-Tarjan)"));
         jMenuAlg.add(jMenuItemWP = new JMenuItem("Welsh-Powell"));
+        jMenuAlg.add(jMenuItemPCV = new JMenuItem("Caixeiro Viajante"));
         add(jMenuAlg);
         jMenuSearch = new JMenu("Busca");
         jMenuSearch.add(jMenuItemBfs = new JMenuItem("BFS"));
@@ -74,6 +75,14 @@ public class MenuBar extends JMenuBar {
         jMenuItemWP.addActionListener(_ -> welshPowell());
 
         jMenuItemAstar.addActionListener(_ -> aStar());
+
+        jMenuItemPCV.addActionListener(_ -> pCV());
+    }
+
+    private void pCV(){
+        GraphPanel graphPanel = ui.getGraphPanel();
+        graphPanel.clearAllAlgorithmVisualizations();
+        graphPanel.applyPCVAlgorithm();
     }
 
     public void setUndirectedFeatures(boolean flag){

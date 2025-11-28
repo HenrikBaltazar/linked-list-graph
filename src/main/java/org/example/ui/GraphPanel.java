@@ -13,6 +13,7 @@ import org.example.graph.Connection;
 import org.example.graph.Edge;
 import org.example.graph.Vertex;
 
+
 public class GraphPanel extends JPanel {
 
     private final List<Vertex> vertexList = new ArrayList<>();
@@ -1603,6 +1604,10 @@ public class GraphPanel extends JPanel {
             }
         }
         return false;
+    }
+
+    public void applyPCVAlgorithm(){
+
     }
 
     public void applyAStarAlgorithm() {
