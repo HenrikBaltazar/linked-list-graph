@@ -1674,74 +1674,154 @@ public class GraphPanel extends JPanel {
     }
 
     public void applyPCVAlgorithm() {
+        // Validação básica
         if (vertexList.size() < 3) {
             JOptionPane.showMessageDialog(this, "O grafo precisa ter pelo menos 3 vértices para o PCV.", "Erro - PCV", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // --- Configuração Simples ---
-        // Você pode manter aquele JSpinner que fiz antes aqui se quiser,
-        // mas vou simplificar os valores hardcoded pra focar na lógica.
-        int popSize = 50;
-        int maxGenerations = 20;
-        double mutationRate = 0.01; // 1%
-        int elitismCount = 2;
+        // --- 1. Cálculo do Fatorial para o Limite Máximo da População ---
+        // R(n) = (n-1)!
+        long maxPopPossivel = 1;
+        int n = vertexList.size();
+        for (int i = 1; i < n; i++) {
+            maxPopPossivel *= i;
+            if (maxPopPossivel > 20000) { // Trava de segurança para não travar a UI com números gigantes
+                maxPopPossivel = 20000;
+                break;
+            }
+        }
+        // O enunciado pede mínimo de 100. Se o grafo for pequeno (ex: 4 cidades = 6 rotas),
+        // permitimos 100 mesmo repetindo indivíduos para cumprir o requisito.
+        int maxSpinner = (int) Math.max(100, maxPopPossivel);
 
-        // 1. População Inicial
+        // --- 2. Construção do Menu de Configuração ---
+        JPanel panel = new JPanel(new GridLayout(4, 2, 10, 10));
+
+        // a) Cidade de Partida
+        String[] vertexIds = vertexList.stream().map(Vertex::getId).toArray(String[]::new);
+        JComboBox<String> comboStart = new JComboBox<>(vertexIds);
+
+        // b) Tamanho da População (Mín 100)
+        JSpinner spinPop = new JSpinner(new SpinnerNumberModel(100, 100, maxSpinner, 10));
+
+        // c) Taxa de Cruzamento (60% - 80%)
+        JSpinner spinCross = new JSpinner(new SpinnerNumberModel(70.0, 60.0, 80.0, 1.0));
+
+        // d) Taxa de Mutação (0.5% - 1.0%)
+        JSpinner spinMut = new JSpinner(new SpinnerNumberModel(0.5, 0.5, 1.0, 0.1));
+
+        panel.add(new JLabel("Cidade de Partida:"));
+        panel.add(comboStart);
+        panel.add(new JLabel("Tamanho da População (Min 100):"));
+        panel.add(spinPop);
+        panel.add(new JLabel("Taxa de Cruzamento (60% - 80%):"));
+        panel.add(spinCross);
+        panel.add(new JLabel("Taxa de Mutação (0.5% - 1%):"));
+        panel.add(spinMut);
+
+        int result = JOptionPane.showConfirmDialog(
+                this, panel, "Configuração PCV (Algoritmo Genético)",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) return;
+
+        // --- 3. Extração dos Dados ---
+        String startVertexId = (String) comboStart.getSelectedItem();
+        Vertex startNode = vertexList.stream().filter(v -> v.getId().equals(startVertexId)).findFirst().orElse(vertexList.get(0));
+
+        int popSize = (int) spinPop.getValue();
+        double crossoverRate = (double) spinCross.getValue() / 100.0;
+        double mutationRate = (double) spinMut.getValue() / 100.0;
+
+        int maxGenerations = 20; // Inicial fixo, pode ser expandido depois
+        int elitismCount = 2; // Mantendo fixo conforme código anterior, ou pode adicionar menu se quiser
+
+        // --- 4. Geração da População Inicial (Respeitando a cidade de partida) ---
         List<Individual> population = new ArrayList<>();
-        List<Vertex> baseGenes = new ArrayList<>(vertexList);
+
+        // Lista de cidades para embaralhar (todas EXCETO a de partida)
+        List<Vertex> citiesToShuffle = new ArrayList<>(vertexList);
+        citiesToShuffle.remove(startNode);
 
         for (int i = 0; i < popSize; i++) {
-            Collections.shuffle(baseGenes);
-            // Passamos a lista de conexões do GraphPanel para o Indivíduo calcular seu custo
-            population.add(new Individual(baseGenes, connectionList));
+            Collections.shuffle(citiesToShuffle);
+
+            // Monta o cromossomo: [Inicio, ...restante embaralhado...]
+            List<Vertex> genes = new ArrayList<>();
+            genes.add(startNode);
+            genes.addAll(citiesToShuffle);
+
+            population.add(new Individual(genes, connectionList));
         }
 
+        // --- 5. Loop do Algoritmo Genético ---
         int currentGeneration = 0;
         boolean userWantsToContinue = true;
 
         while (userWantsToContinue && currentGeneration < maxGenerations) {
             currentGeneration++;
-            Collections.sort(population); // Ordena pelo fitness (definido na classe Individual)
+            Collections.sort(population); // Ordena pelo fitness
 
-            // --- Feedback ao Usuário ---
+            // Feedback ao Usuário
             StringBuilder stats = new StringBuilder();
-            stats.append("Geração: ").append(currentGeneration).append("\n");
-            stats.append("Melhor Custo: ").append(String.format("%.2f", population.get(0).getFitness())).append("\n\n");
+            stats.append("Geração: ").append(currentGeneration).append(" de ").append(maxGenerations).append("\n");
+            stats.append("Melhor Custo: ").append(String.format("%.2f", population.get(0).getFitness())).append("\n");
+            stats.append("Taxas: Cruzamento ").append((int)(crossoverRate*100)).append("%, Mutação ").append(String.format("%.1f", mutationRate*100)).append("%\n\n");
             stats.append("Top 5 Indivíduos:\n");
             for(int k=0; k < Math.min(5, population.size()); k++){
                 stats.append(k+1).append(". ").append(population.get(k).toString()).append("\n");
             }
             stats.append("\nContinuar?");
 
-            int choice = JOptionPane.showConfirmDialog(this, stats.toString(), "AG - Geração " + currentGeneration, JOptionPane.YES_NO_OPTION);
-            if (choice != JOptionPane.YES_OPTION) break;
+            // Opções de controle
+            Object[] options = {"Próxima Geração", "Pular p/ Final", "Parar"};
+            int choice = JOptionPane.showOptionDialog(this, new JScrollPane(new JTextArea(stats.toString(), 15, 40)),
+                    "Acompanhamento AG", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
 
-            // --- Nova Geração ---
+            if (choice == 2) break; // Parar
+            boolean skipVisuals = (choice == 1); // Pular p/ Final (apenas desativa o dialog nas proximas iterações desse loop)
+
+            // Nova Geração
             List<Individual> newPopulation = new ArrayList<>();
 
-            // 1. Elitismo
+            // Elitismo
             for (int i = 0; i < elitismCount; i++) newPopulation.add(population.get(i));
 
-            // 2. Cruzamento e Mutação
+            // Cruzamento e Mutação
             Random rand = new Random();
             while (newPopulation.size() < popSize) {
                 Individual p1 = tournamentSelection(population);
                 Individual p2 = tournamentSelection(population);
 
-                List<Vertex> childGenes = pmxCrossover(p1.getGenes(), p2.getGenes());
+                // Aplica Cruzamento baseado na taxa escolhida
+                List<Vertex> childGenes;
+                if (rand.nextDouble() < crossoverRate) {
+                    childGenes = pmxCrossover(p1.getGenes(), p2.getGenes());
+                } else {
+                    childGenes = new ArrayList<>(p1.getGenes()); // Sem cruzamento, copia o pai
+                }
 
+                // Aplica Mutação baseada na taxa escolhida
+                // IMPORTANTE: Mutação não deve trocar a cidade de partida (índice 0)
                 if (rand.nextDouble() < mutationRate) {
-                    swapMutation(childGenes);
+                    // Swap mutation entre indices 1 e size-1 (preserva o índice 0)
+                    int idx1 = 1 + rand.nextInt(childGenes.size() - 1);
+                    int idx2 = 1 + rand.nextInt(childGenes.size() - 1);
+                    Collections.swap(childGenes, idx1, idx2);
                 }
 
                 newPopulation.add(new Individual(childGenes, connectionList));
             }
             population = newPopulation;
 
-            // Lógica de estender gerações (obrigatório)
+            // Se o usuário pediu para pular para o final, não mostramos o dialog, mas o loop continua
+            if (skipVisuals && currentGeneration < maxGenerations) continue;
+
+            // Lógica de estender gerações
             if (currentGeneration == maxGenerations) {
-                int extend = JOptionPane.showConfirmDialog(this, "Adicionar +20 gerações?", "Fim", JOptionPane.YES_NO_OPTION);
+                int extend = JOptionPane.showConfirmDialog(this, "Limite de gerações atingido. Adicionar +20 gerações?", "Critério de Parada", JOptionPane.YES_NO_OPTION);
                 if (extend == JOptionPane.YES_OPTION) maxGenerations += 20;
             }
         }
@@ -1749,7 +1829,7 @@ public class GraphPanel extends JPanel {
         // Finalização
         Collections.sort(population);
         Individual best = population.get(0);
-        reconstructPCVPath(best); // Visualiza a melhor rota
+        reconstructPCVPath(best);
     }
 
     // Seleção por Torneio
@@ -1832,7 +1912,7 @@ public class GraphPanel extends JPanel {
         showPCVPath = true;
         repaint();
         pcvTotalWeight = best.getFitness();
-        JOptionPane.showMessageDialog(this, "Melhor rota encontrada com custo: " + pcvTotalWeight);
+        JOptionPane.showMessageDialog(this, "Melhor rota encontrada com custo: " + pcvTotalWeight   );
     }
 
     public void applyAStarAlgorithm() {
