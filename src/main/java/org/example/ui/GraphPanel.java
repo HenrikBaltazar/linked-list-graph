@@ -1700,6 +1700,7 @@ public class GraphPanel extends JPanel {
 
         // a) Cidade de Partida
         String[] vertexIds = vertexList.stream().map(Vertex::getId).toArray(String[]::new);
+
         JComboBox<String> comboStart = new JComboBox<>(vertexIds);
 
         // b) Tamanho da População (Mín 100)
@@ -1729,8 +1730,13 @@ public class GraphPanel extends JPanel {
 
         // --- 3. Extração dos Dados ---
         String startVertexId = (String) comboStart.getSelectedItem();
-        Vertex startNode = vertexList.stream().filter(v -> v.getId().equals(startVertexId)).findFirst().orElse(vertexList.get(0));
-
+        Vertex startNode = vertexList.get(0); // Define o primeiro como padrão (fallback)
+        for (Vertex v : vertexList) {
+            if (v.getId().equals(startVertexId)) {
+                startNode = v;
+                break;
+            }
+        }
         int popSize = (int) spinPop.getValue();
         double crossoverRate = (double) spinCross.getValue() / 100.0;
         double mutationRate = (double) spinMut.getValue() / 100.0;
@@ -1759,29 +1765,52 @@ public class GraphPanel extends JPanel {
         // --- 5. Loop do Algoritmo Genético ---
         int currentGeneration = 0;
         boolean userWantsToContinue = true;
+        boolean skipVisuals = false; // Pular p/ Final (apenas desativa o dialog nas proximas iterações desse loop)
 
         while (userWantsToContinue && currentGeneration < maxGenerations) {
             currentGeneration++;
             Collections.sort(population); // Ordena pelo fitness
 
-            // Feedback ao Usuário
-            StringBuilder stats = new StringBuilder();
-            stats.append("Geração: ").append(currentGeneration).append(" de ").append(maxGenerations).append("\n");
-            stats.append("Melhor Custo: ").append(String.format("%.2f", population.get(0).getFitness())).append("\n");
-            stats.append("Taxas: Cruzamento ").append((int)(crossoverRate*100)).append("%, Mutação ").append(String.format("%.1f", mutationRate*100)).append("%\n\n");
-            stats.append("Top 5 Indivíduos:\n");
-            for(int k=0; k < Math.min(5, population.size()); k++){
-                stats.append(k+1).append(". ").append(population.get(k).toString()).append("\n");
+            if (!skipVisuals) {
+                // Mostra a melhor rota atual no fundo antes do dialog
+                pcvPathConnections.clear();
+                List<Vertex> currentBestGenes = population.get(0).getGenes();
+                for (int i = 0; i < currentBestGenes.size(); i++) {
+                    Vertex from = currentBestGenes.get(i);
+                    Vertex to = currentBestGenes.get((i + 1) % currentBestGenes.size());
+                    Connection c = findConnectionBetween(from, to);
+                    if (c != null) pcvPathConnections.add(c);
+                }
+                showPCVPath = true;
+                pcvTotalWeight = population.get(0).getFitness();
+                paintImmediately(getBounds()); // Força o redesenho imediato
+
+                // Feedback ao Usuário
+                StringBuilder stats = new StringBuilder();
+                stats.append("Geração: ").append(currentGeneration).append(" de ").append(maxGenerations).append("\n");
+                stats.append("Melhor Custo: ").append(String.format("%.2f", population.get(0).getFitness())).append("\n");
+                stats.append("Taxas: Cruzamento ").append((int) (crossoverRate * 100)).append("%, Mutação ").append(String.format("%.1f", mutationRate * 100)).append("%\n\n");
+                stats.append("Top 5 Indivíduos:\n");
+                for (int k = 0; k < Math.min(5, population.size()); k++) {
+                    stats.append(k + 1).append(". ").append(population.get(k).toString()).append("\n");
+                }
+                stats.append("\nContinuar?");
+
+                // Opções de controle
+                Object[] options = {"Próxima Geração", "Pular p/ Final", "Parar"};
+                int choice = JOptionPane.showOptionDialog(this, new JScrollPane(new JTextArea(stats.toString(), 15, 40)),
+                        "Acompanhamento AG", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+
+                if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) {
+                    userWantsToContinue = false;
+                    break;
+                }
+                ; // Parar
+
+                if (choice == 1) {
+                    skipVisuals = true;
+                }
             }
-            stats.append("\nContinuar?");
-
-            // Opções de controle
-            Object[] options = {"Próxima Geração", "Pular p/ Final", "Parar"};
-            int choice = JOptionPane.showOptionDialog(this, new JScrollPane(new JTextArea(stats.toString(), 15, 40)),
-                    "Acompanhamento AG", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
-
-            if (choice == 2) break; // Parar
-            boolean skipVisuals = (choice == 1); // Pular p/ Final (apenas desativa o dialog nas proximas iterações desse loop)
 
             // Nova Geração
             List<Individual> newPopulation = new ArrayList<>();
@@ -1816,13 +1845,13 @@ public class GraphPanel extends JPanel {
             }
             population = newPopulation;
 
-            // Se o usuário pediu para pular para o final, não mostramos o dialog, mas o loop continua
-            if (skipVisuals && currentGeneration < maxGenerations) continue;
-
             // Lógica de estender gerações
             if (currentGeneration == maxGenerations) {
                 int extend = JOptionPane.showConfirmDialog(this, "Limite de gerações atingido. Adicionar +20 gerações?", "Critério de Parada", JOptionPane.YES_NO_OPTION);
-                if (extend == JOptionPane.YES_OPTION) maxGenerations += 20;
+                if (extend == JOptionPane.YES_OPTION) {
+                    maxGenerations += 20;
+                    skipVisuals = false;
+                }
             }
         }
 
