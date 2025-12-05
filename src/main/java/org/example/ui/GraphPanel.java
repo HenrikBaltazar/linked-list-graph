@@ -1874,14 +1874,6 @@ public class GraphPanel extends JPanel {
         return best;
     }
 
-    // Mutação Swap (Troca simples)
-    private void swapMutation(List<Vertex> genes) {
-        Random rand = new Random();
-        int i = rand.nextInt(genes.size());
-        int j = rand.nextInt(genes.size());
-        Collections.swap(genes, i, j);
-    }
-
     // Cruzamento PMX (Lógica principal de corte e mapeamento)
     private List<Vertex> pmxCrossover(List<Vertex> p1, List<Vertex> p2) {
         int n = p1.size();
